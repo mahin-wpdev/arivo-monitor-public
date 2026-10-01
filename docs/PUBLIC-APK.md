@@ -38,3 +38,20 @@ local GitHub login for that second repository, without putting tokens into sourc
 The public source export omits production workflow files and local configuration.
 Its history contains only reviewed snapshots; the private production history
 is not exported. Older APKs that contain a shared production key stay private.
+
+## Verified release: 1.1.3+7 (2026-10-01)
+
+- Flutter's original UI test passed, and the mobile UI source is unchanged from
+  the previous production version.
+- Enrollment tests passed for admin approval, expiry, one-time redemption,
+  token rotation, persisted hashes and rejection of another device's requests.
+- The public APK passed the production credential scan and the pinned signer
+  verification. The scan also correctly rejected the old embedded-key APK.
+- Anonymous GitHub download, the locally built APK and server update metadata
+  matched SHA-256 `36c92b55daffb26fc798aeb99d9f99a3aedd9cbc434e238e58062219f14dfddf`.
+- The connected phone was updated in place to 1.1.3+7, connected using a one-time
+  dashboard link and reported update_status=current with a fresh heartbeat.
+- After restarting the app, encrypted activation remained valid and another
+  fresh heartbeat arrived at 2026-10-01T12:39:12.673Z (18:39:12 Dhaka).
+- Server policy remains required=false and rollout=100%; Android's installation
+  approval and screen-sharing consent remain in place.

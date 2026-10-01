@@ -6,6 +6,7 @@
 - Added one-time dashboard connection links with 10-minute expiry and device-scoped activation tokens, encrypted on Android with Keystore and excluded from backups.
 - Preserved HTTPS background update checks, SHA-256 verification and the Android installation approval flow; activation survives future in-place updates.
 - Added enrollment authorization tests and an APK credential scan, plus automated public source/APK publishing to the private release workflow.
+- Verified the anonymous public APK checksum against the live updater, updated and activated the connected phone on 1.1.3+7, and confirmed current update status and fresh heartbeats before and after restarting the app.
 
 ## 1.1.2 - 2026-09-30
 
