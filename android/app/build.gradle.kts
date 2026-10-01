@@ -10,7 +10,6 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
-val arivoDeviceKey = localProperties.getProperty("ARIVO_DEVICE_KEY", "")
 val arivoServerBaseUrl = localProperties.getProperty("ARIVO_SERVER_BASE_URL", "")
 
 android {
@@ -36,7 +35,6 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        buildConfigField("String", "ARIVO_DEVICE_KEY", "\"$arivoDeviceKey\"")
         buildConfigField("String", "ARIVO_SERVER_BASE_URL", "\"$arivoServerBaseUrl\"")
     }
 

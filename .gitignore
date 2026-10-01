@@ -54,7 +54,6 @@ android/local.properties
 server/data/
 android/build/
 
-# Public source snapshot: keep deployment workflows and credentials private
 .github/workflows/
 *.apk
 *.jks

@@ -1,15 +1,11 @@
+> Public source and credential-free Android APK releases. Download the latest APK from [Releases](https://github.com/mahin-wpdev/arivo-monitor-public/releases/latest). Connect once through your dashboard's Devices page. Mobile UI is unchanged. See [public APK setup and auto-updates](docs/PUBLIC-APK.md).
+
 # Arivo Monitor
 
-> Public source snapshot. The production repository and its existing Android APK
-> releases remain private. This repository does not include APKs, device API keys,
-> signing keys, local runtime configuration, or production release workflows.
-> Use your own backend configuration and signing identity for independent builds.
-
-This snapshot was exported from production commit
-`6f0e9d63000586d8f16e10e8c2cc11ccc1ff00cf` on 2026-10-01.
-See [PUBLIC-SOURCE.md](docs/PUBLIC-SOURCE.md) for the repository's scope.
-
 Self-hosted Android monitoring client and web dashboard.
+
+Public APK downloads: [Arivo Releases](https://github.com/mahin-wpdev/arivo-monitor-public/releases/latest).
+See [Public APK and automatic updates](docs/PUBLIC-APK.md) for connecting a phone and the update flow. The mobile UI remains unchanged.
 
 ## Current MVP
 - Minimal Android UI: `● App Live`

@@ -16,14 +16,39 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.arivo.monitor/control"
     private val permissionRequest = 1001
     private val projectionRequest = 2001
+    private val activationIo = Executors.newSingleThreadExecutor()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleActivationIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleActivationIntent(intent)
+    }
+
+    private fun handleActivationIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (intent.action != Intent.ACTION_VIEW || uri.scheme != "arivo" || uri.host != "activate") return
+        val code = uri.getQueryParameter("code") ?: return
+        activate(code)
+        // Do not retain the one-time code in the activity's current intent.
+        intent.data = null
+    }
 
     override fun onResume() {
         super.onResume()
+        AppConfig.initialize(applicationContext)
         Handler(Looper.getMainLooper()).postDelayed({
             AppUpdateManager.checkAndPrompt(this)
         }, 700)
@@ -34,10 +59,52 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 if (call.method == "startMonitoring") {
+                    if (AppConfig.DEVICE_KEY.isBlank()) {
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
                     ensurePermissionsAndStart()
                     result.success(true)
                 } else result.notImplemented()
             }
+    }
+
+    private fun activate(code: String) {
+        if (!code.replace(Regex("[\\s-]"), "").matches(Regex("[a-fA-F0-9]{20}"))) {
+            return
+        }
+        activationIo.execute {
+            var connection: HttpURLConnection? = null
+            try {
+                require(AppConfig.SERVER_BASE_URL.startsWith("https://"))
+                val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                    ?: throw IllegalStateException("Device identity unavailable")
+                connection = URL(AppConfig.SERVER_BASE_URL + "/device/enroll")
+                    .openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                val body = JSONObject().put("code", code).put("device_id", deviceId)
+                connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                if (connection.responseCode != 200) throw IllegalStateException("Activation rejected")
+                val response = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                AppConfig.saveToken(applicationContext, response.getString("token"))
+                getSharedPreferences("arivo_app_update", MODE_PRIVATE).edit().putLong("last_check", 0L).apply()
+                runOnUiThread {
+                    if (!isFinishing) {
+                        ensurePermissionsAndStart()
+                        AppUpdateManager.checkAndPrompt(this)
+                    }
+                }
+            } catch (_: Exception) {
+                // The dashboard shows connection through the next heartbeat.
+                // A failed or expired link can be replaced there without logging credentials.
+            } finally {
+                connection?.disconnect()
+            }
+        }
     }
 
     private fun ensurePermissionsAndStart() {

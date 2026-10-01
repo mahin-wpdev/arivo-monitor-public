@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { URL } = require('url');
+const { createEnrollmentStore } = require('./device-enrollment');
 
 const ROOT = __dirname;
 const ENV = {};
@@ -28,6 +29,9 @@ const updateMetaFile = path.join(DATA, 'updates', 'update.json');
 const updateHistoryFile = path.join(DATA, 'updates', 'history.jsonl');
 const liveLogFile = path.join(DATA, 'live-sessions.jsonl');
 const storageHealthFile = path.join(DATA, 'storage-health.json');
+const enrollment = createEnrollmentStore(DATA);
+let enrollmentAttempts = 0;
+let enrollmentWindow = Date.now();
 const safe = v => String(v || '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 120);
 const now = () => new Date().toISOString();
 const sha256File = file => {
@@ -217,7 +221,12 @@ function createMetadataBackup() {
   writeJson(file, payload);
   return { file: path.basename(file), bytes: fs.statSync(file).size, created_at: payload.created_at };
 }
-const isDevice = req => DEVICE_KEY && req.headers['x-arivo-key'] === DEVICE_KEY;
+const deviceIdentity = req => {
+  const key = req.headers['x-arivo-key'];
+  if (DEVICE_KEY && key === DEVICE_KEY) return { legacy: true };
+  const id = enrollment.authenticate(key);
+  return id ? { id } : null;
+};
 const isAdmin = req => {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Basic ')) return false;
@@ -234,15 +243,29 @@ const requireAdmin = (req, res) => {
   return false;
 };
 async function deviceApi(req, res, url) {
-  if (!isDevice(req)) return sendJson(res, 401, { error: 'unauthorized' });
+  if (req.method === 'POST' && url.pathname === '/device/enroll') {
+    if (Date.now() - enrollmentWindow >= 60000) {
+      enrollmentAttempts = 0;
+      enrollmentWindow = Date.now();
+    }
+    if (++enrollmentAttempts > 60) return sendJson(res, 429, { error: 'try_again_later' });
+    const data = JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}');
+    const token = enrollment.redeem(data.code, data.device_id);
+    if (!token) return sendJson(res, 401, { error: 'invalid_or_expired_code' });
+    return sendJson(res, 200, { token });
+  }
+  const identity = deviceIdentity(req);
+  if (!identity) return sendJson(res, 401, { error: 'unauthorized' });
+  const ownsDevice = id => identity.legacy || identity.id === id;
 
   if (req.method === 'GET' && url.pathname === '/device/update') {
+    const deviceId = safe(url.searchParams.get('device_id') || identity.id);
+    if (!ownsDevice(deviceId)) return sendJson(res, 403, { error: 'wrong_device' });
     if (!fs.existsSync(updateFile) || !fs.existsSync(updateMetaFile)) {
       return sendJson(res, 200, { available: false });
     }
     const meta = readJson(updateMetaFile, {});
     const stat = fs.statSync(updateFile);
-    const deviceId = safe(url.searchParams.get('device_id'));
     const rollout = Math.max(1, Math.min(100, Number(meta.rollout_percent || 100)));
     let eligible = true;
     if (deviceId && rollout < 100) {
@@ -278,6 +301,7 @@ async function deviceApi(req, res, url) {
     const data = JSON.parse((await readBody(req, 1024 * 1024)).toString('utf8') || '{}');
     const id = safe(data.device_id);
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
     updateDevice(id, { ...data, last_seen: now() });
     return sendJson(res, 200, { ok: true });
   }
@@ -286,6 +310,7 @@ async function deviceApi(req, res, url) {
     const data = JSON.parse((await readBody(req, 1024 * 1024)).toString('utf8') || '{}');
     const id = safe(data.device_id);
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
     const item = { ...data, device_id: id, recorded_at: now() };
     appendJsonl(path.join(DATA, 'locations', id + '.jsonl'), item);
     updateDevice(id, { last_location: item, last_seen: now() });
@@ -293,6 +318,7 @@ async function deviceApi(req, res, url) {
   }
   if (req.method === 'POST' && url.pathname === '/device/screen') {
     const id = safe(url.searchParams.get('device_id'));
+    if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
     const kind = url.searchParams.get('kind') === 'live' ? 'live' : 'periodic';
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
     const image = await readBody(req, 12 * 1024 * 1024);
@@ -321,6 +347,7 @@ async function deviceApi(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/device/command') {
     const id = safe(url.searchParams.get('device_id'));
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
     const commands = readJson(commandsFile, {});
     return sendJson(res, 200, { live: Boolean(commands[id]?.live) });
   }
@@ -330,6 +357,9 @@ async function deviceApi(req, res, url) {
 
 async function adminApi(req, res, url) {
   if (!requireAdmin(req, res)) return;
+  if (req.method === 'POST' && url.pathname === '/admin/pairing-code') {
+    return sendJson(res, 200, enrollment.issue());
+  }
   if (req.method === 'GET' && url.pathname === '/admin/devices') {
     const all = readJson(devicesFile, {});
     const t = Date.now();

@@ -67,6 +67,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 
 <section id="devicesView" class="view">
   <div class="pageHead"><div><h2>Devices</h2><div class="muted">Select a device to monitor</div></div><button id="devicesRefresh" class="secondary">Refresh</button></div>
+  <div class="panel" style="margin-bottom:14px"><h3>Connect a phone</h3><p class="muted">Install Arivo on your phone, open this dashboard there, then create and open a connection link. It can be used once and expires in 10 minutes. Connection is confirmed when the phone appears online below.</p><button id="pairPhone">Create connection link</button><p id="pairingCode" aria-live="polite"></p></div>
   <div id="devices" class="deviceGrid"></div>
 </section>
 
@@ -207,6 +208,12 @@ function localDateKey(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padSta
 function yesterdayKey(){const d=new Date();d.setDate(d.getDate()-1);return localDateKey(d)}
 async function api(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)}
+document.getElementById('pairPhone').onclick=async()=>{
+  const button=document.getElementById('pairPhone');button.disabled=true;
+  try{const result=await api('/arivo-monitor/admin/pairing-code',{method:'POST'});const container=document.getElementById('pairingCode');container.replaceChildren();const link=document.createElement('a');link.textContent='Connect this phone';link.href='intent://activate?code='+encodeURIComponent(result.code)+'#Intent;scheme=arivo;package=com.arivo.arivo_monitor;end';container.append(link,document.createTextNode(' · Expires '+fmt(result.expires_at)));setTimeout(()=>container.replaceChildren(),Math.max(0,new Date(result.expires_at)-Date.now()));}
+  catch{toast('Could not create connection link. Try again.');}
+  finally{button.disabled=false;}
+};
 function bytesText(v){const n=Number(v||0);return n>=1073741824?(n/1073741824).toFixed(n>10737418240?0:1)+' GB':(n/1048576).toFixed(0)+' MB'}
 function pointsOf(rows){return rows.filter(x=>Number.isFinite(+x.latitude)&&Number.isFinite(+x.longitude)).map(x=>[+x.latitude,+x.longitude])}
 function distanceKm(rows){const p=pointsOf(rows);let km=0;for(let i=1;i<p.length;i++)km+=map.distance(p[i-1],p[i])/1000;return km}

@@ -9,8 +9,8 @@ Arivo updates are managed from the private GitHub repository using the dedicated
 3. Open **Release Arivo**.
 4. Click **Run workflow**.
 5. Enter:
-   - Version name, for example `1.1.2`
-   - Build number, for example `6`
+   - Version name, for example `1.1.3`
+   - Build number, for example `7`
    - Required update: on/off
    - Rollout percentage: `1-100`
    - Release notes
@@ -27,6 +27,10 @@ The workflow automatically:
 - attaches the APK to the GitHub Release;
 - publishes that exact APK to the Arivo update server through the authenticated public admin update API;
 - verifies the published version, size, rollout/required flags, and SHA-256 before the workflow completes.
+- rejects an APK that contains known production credentials;
+- refreshes the public source snapshot and publishes the same credential-free APK to `mahin-wpdev/arivo-monitor-public` using the runner's existing GitHub CLI login.
+
+See [Public APK and automatic updates](PUBLIC-APK.md) for the one-time phone connection flow. The mobile UI remains unchanged. The first update from the old embedded-key build needs a dashboard connection link; subsequent updates preserve activation.
 
 ## Manage an existing update from GitHub
 

@@ -1,11 +1,17 @@
 # Changelog
 
+## 1.1.3 - 2026-10-01
+
+- Enabled public APK distribution without embedding the production device key, preserving the existing Android signer and mobile UI.
+- Added one-time dashboard connection links with 10-minute expiry and device-scoped activation tokens, encrypted on Android with Keystore and excluded from backups.
+- Preserved HTTPS background update checks, SHA-256 verification and the Android installation approval flow; activation survives future in-place updates.
+- Added enrollment authorization tests and an APK credential scan, plus automated public source/APK publishing to the private release workflow.
+
 ## 1.1.2 - 2026-09-30
 
 - GitHub-managed update pipeline enabled and verified.
 
 ## Unreleased
-- Published a separate source-only snapshot while retaining the production repository, APK releases, device credentials, and signing identity privately.
 - Repaired production Nginx HTTP-01 challenge routing for certificate renewal, verified renewal and the automatic reload hook, and documented the aaPanel/Certbot configuration and recovery checks in docs/HTTPS-RENEWAL.md; confirmed a fresh real-device heartbeat and current update status on the unchanged 1.1.2+6 release.
 - Release/update management helpers now enforce normal HTTPS certificate validation instead of accepting invalid or expired TLS certificates, so GitHub workflows cannot report a false-success path that Android devices would reject.
 - Fixed Android updater stale-cache prompting so an expired check interval refreshes server metadata before showing a cached APK, clears obsolete cached update metadata when already current, and retries promptly after failed checks.

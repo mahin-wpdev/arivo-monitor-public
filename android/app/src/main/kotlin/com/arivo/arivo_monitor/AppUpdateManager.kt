@@ -30,6 +30,7 @@ object AppUpdateManager {
         check(context.applicationContext, null)
     }
     fun checkAndPrompt(activity: Activity) {
+        if (AppConfig.DEVICE_KEY.isBlank()) return
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (checking) {
@@ -46,6 +47,7 @@ object AppUpdateManager {
     }
 
     private fun check(context: Context, activity: Activity?) {
+        if (AppConfig.DEVICE_KEY.isBlank()) return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (checking || now - prefs.getLong("last_check", 0L) < CHECK_INTERVAL_MS) return

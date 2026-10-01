@@ -9,6 +9,8 @@ import android.util.Log
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
+        AppConfig.initialize(context)
+        if (AppConfig.DEVICE_KEY.isBlank()) return
         Log.i("ArivoMonitor", "BootReceiver action=$action")
         when (action) {
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
