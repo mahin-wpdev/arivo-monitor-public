@@ -5,6 +5,7 @@
 - Request screen-recording consent once after reboot and first unlock using BOOT_COMPLETED, instead of relying on a manifest USER_UNLOCKED broadcast that Android does not deliver to manifest receivers.
 - Keep a visible startup notification when Android blocks opening the consent activity from the background; tapping it opens Android's real consent prompt directly.
 - Close the consent activity after Allow or Cancel, retain heartbeat recovery, and only start recording after explicit Android approval. Mobile UI and signing identity remain unchanged.
+- Verified the exact published APK installed through the app updater; a real reboot delivered the startup notification, the user approved recording and the consent screen closed, followed by a fresh build-10 heartbeat with recording active and update status current.
 
 ## 1.1.5 - 2026-10-02
 
