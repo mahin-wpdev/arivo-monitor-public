@@ -1,0 +1,6 @@
+[Unit]
+Description=Arivo HDD SMART health snapshot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/arivo-storage-health.sh

@@ -1,0 +1,17 @@
+[Unit]
+Description=Arivo Monitor Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mahin
+Group=mahin
+WorkingDirectory=/home/mahin/arivo-monitor-server
+ExecStart=/usr/bin/node /home/mahin/arivo-monitor-server/server.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

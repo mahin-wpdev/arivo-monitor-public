@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arivo Monitor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f4f7fb;--surface:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#2563eb;--brand2:#7c3aed;--success:#16a34a;--danger:#dc2626;--shadow:0 14px 40px rgba(15,23,42,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+header{height:72px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;color:#fff;background:linear-gradient(110deg,#0f172a,#172554);box-shadow:0 8px 26px rgba(15,23,42,.18)}
+.brand{display:flex;align-items:center;gap:11px}.mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#60a5fa,#8b5cf6)}.brand b{display:block}.brand small{color:#cbd5e1}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 72px)}aside{padding:18px 12px;background:#fff;border-right:1px solid var(--line)}
+.nav{display:flex;flex-direction:column;gap:6px}.nav button{width:100%;text-align:left;background:transparent;color:#475569;box-shadow:none;padding:11px 13px}.nav button.active{background:#eff6ff;color:#1d4ed8}
+main{padding:20px;min-width:0}.view{display:none}.view.active{display:block}.pageHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.pageHead h2{margin:0;font-size:22px}.muted{color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(6,minmax(135px,1fr));gap:12px}.card,.panel,.mini{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.card{padding:16px}.card b{font-size:26px;display:block;margin-top:6px}.panel{padding:17px}.panel h3{margin:0 0 12px;font-size:16px}
+.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.deviceGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.device,.alert{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.device{cursor:pointer}.device:hover,.device.selected{border-color:#93c5fd;background:#eff6ff}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;background:#94a3b8}.on{background:var(--success)}.off{background:var(--danger)}
+button,select,input{border-radius:10px;padding:9px 12px;font:inherit}button{border:0;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:650;box-shadow:0 6px 16px rgba(37,99,235,.16)}button.secondary{background:#eef2f7;color:#334155;box-shadow:none;border:1px solid var(--line)}button.danger{background:#fee2e2;color:#b91c1c;box-shadow:none}button:disabled{opacity:.45;cursor:not-allowed}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.statusLine{padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#f8fafc;margin-bottom:10px}
+#map{height:390px;border-radius:13px;border:1px solid var(--line)}.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:10px 0}.mini{padding:11px;box-shadow:none}.mini b{display:block;margin-top:4px;font-size:14px}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8fafc;color:#475569}tr:last-child td{border-bottom:0}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.shot{background:#fff;border:1px solid var(--line);border-radius:13px;padding:7px}.shot.selected{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.12)}.shot img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:9px;background:#0f172a;cursor:zoom-in}.shotActions{display:flex;gap:6px;margin-top:7px}.shotActions button,.shotActions a{flex:1;text-align:center;text-decoration:none;font-size:12px;padding:7px 6px;border-radius:8px}.shotActions a{background:#eef2ff;color:#3730a3}.progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#7c3aed)}.good{color:#15803d}.warn{color:#b45309}.bad{color:#b91c1c}
+.screenWrap{min-height:360px;padding:14px;border-radius:16px;background:#07111f;display:grid;place-items:center}.screen{max-width:100%;max-height:65vh;border-radius:10px;cursor:zoom-in}
+.storageBar{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}.storageBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#8b5cf6)}
+.settingRow{display:grid;grid-template-columns:1fr 220px;gap:15px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.settingRow:last-child{border-bottom:0}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.9);z-index:999}.modal.open{display:flex}.modal img{max-width:92vw;max-height:90vh;border-radius:14px}.modal button{position:absolute;top:20px;right:20px}
+.toast{position:fixed;right:20px;bottom:20px;display:none;padding:11px 14px;background:#0f172a;color:#fff;border-radius:10px;z-index:1000}.toast.show{display:block}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.twoCol{grid-template-columns:1fr}.miniGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){header{padding:0 14px}.shell{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);overflow:auto}.nav{flex-direction:row}.nav button{width:auto;white-space:nowrap}main{padding:14px}.cards{grid-template-columns:1fr 1fr}.settingRow{grid-template-columns:1fr}.shots{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="mark">A</div><div><b>Arivo Monitor</b><small>Family monitoring dashboard</small></div></div>
+  <div class="muted" style="color:#cbd5e1">Secure self-hosted</div>
+</header>
+<div class="shell">
+<aside><nav class="nav">
+  <button class="active" data-view="overview">⌂ Overview</button>
+  <button data-view="devicesView">◫ Devices</button>
+  <button data-view="locationView">⌖ Location</button>
+  <button data-view="shotsView">▣ Screenshots</button>
+  <button data-view="liveView">◉ Live Screen</button>
+  <button data-view="storageView">◈ Storage</button>
+  <button data-view="updatesView">↻ App Updates</button>
+  <button data-view="settingsView">⚙ Settings</button>
+</nav></aside>
+<main>
+<section id="overview" class="view active">
+  <div class="pageHead"><div><h2>Overview</h2><div class="muted">Quick system status</div></div><button id="overviewRefresh" class="secondary">Refresh</button></div>
+  <div class="cards">
+    <div class="card"><span class="muted">Devices</span><b id="total">0</b></div>
+    <div class="card"><span class="muted">Online</span><b id="online">0</b></div>
+    <div class="card"><span class="muted">Offline</span><b id="offline">0</b></div>
+    <div class="card"><span class="muted">Active SOS</span><b id="sos">0</b></div>
+    <div class="card"><span class="muted">Today's Distance</span><b id="distance">0 km</b></div>
+    <div class="card"><span class="muted">Screenshot HDD</span><b id="storageFree">—</b><div class="storageBar"><i id="storageBar"></i></div></div>
+  </div>
+  <div class="twoCol">
+    <div class="panel"><h3>Recent Alerts</h3><div id="alerts"><div class="muted">No alerts</div></div></div>
+    <div class="panel"><h3>Selected Device</h3><div id="overviewDevice" class="muted">No device selected</div></div>
+  </div>
+</section>
+
+<section id="devicesView" class="view">
+  <div class="pageHead"><div><h2>Devices</h2><div class="muted">Select a device to monitor</div></div><button id="devicesRefresh" class="secondary">Refresh</button></div>
+  <div id="devices" class="deviceGrid"></div>
+</section>
+
+<section id="locationView" class="view">
+  <div class="pageHead"><div><h2>Location</h2><div class="muted">Current position and compact history</div></div></div>
+  <div class="panel">
+    <h3 id="deviceTitle">Select a device</h3>
+    <div id="status" class="statusLine muted">No device selected</div>
+    <div id="map"></div>
+    <div class="toolbar">
+      <button id="todayBtn">Today</button>
+      <button id="yesterdayBtn" class="secondary">Yesterday</button>
+      <input id="historyDate" type="date">
+    </div>
+    <div class="miniGrid">
+      <div class="mini"><span class="muted">Distance</span><b id="selectedDistance">0 km</b></div>
+      <div class="mini"><span class="muted">First Location</span><b id="firstLocation">—</b></div>
+      <div class="mini"><span class="muted">Last Location</span><b id="lastLocation">—</b></div>
+      <div class="mini"><span class="muted">Stay Time</span><b id="stayTime">0 min</b></div>
+    </div>
+    <div class="twoCol">
+      <div><h3>Recent Points</h3><table><thead><tr><th>Time</th><th>Lat</th><th>Lng</th><th>Accuracy</th></tr></thead><tbody id="history"></tbody></table></div>
+      <div><h3>Detected Stays</h3><table><thead><tr><th>From</th><th>To</th><th>Duration</th></tr></thead><tbody id="stays"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<section id="shotsView" class="view">
+  <div class="pageHead"><div><h2>Screenshots</h2><div class="muted">Filter, select, download or delete screenshots</div></div><button id="shotsRefresh" class="secondary">Refresh</button></div>
+  <div class="panel">
+    <div id="shotsDevice" class="statusLine muted">No device selected</div>
+    <div class="miniGrid">
+      <div class="mini"><span class="muted">Total</span><b id="shotCount">0</b></div>
+      <div class="mini"><span class="muted">Storage</span><b id="shotBytes">0 MB</b></div>
+      <div class="mini"><span class="muted">Today</span><b id="shotToday">0</b></div>
+      <div class="mini"><span class="muted">Integrity</span><b id="shotIntegrity">—</b></div>
+    </div>
+    <div class="toolbar">
+      <input id="shotDate" type="date">
+      <button id="shotClearDate" class="secondary">All Dates</button>
+      <button id="shotSelectAll" class="secondary">Select All</button>
+      <button id="shotDownloadSelected" class="secondary">Download Selected</button>
+      <button id="shotDeleteSelected" class="danger">Delete Selected</button>
+      <select id="deviceRetention"><option value="">Use Global Retention</option><option value="1">1 day</option><option value="3">3 days</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="0">Never</option></select>
+      <button id="saveDeviceRetention" class="secondary">Save Device Retention</button>
+    </div>
+    <div id="shots" class="shots"></div>
+  </div>
+</section>
+
+<section id="liveView" class="view">
+  <div class="pageHead"><div><h2>Live Screen</h2><div class="muted">Requires active Android screen-sharing consent</div></div></div>
+  <div class="panel">
+    <div id="liveStatus" class="statusLine muted">No device selected</div>
+    <div class="miniGrid">
+      <div class="mini"><span class="muted">Stream</span><b id="liveConnection">Stopped</b></div>
+      <div class="mini"><span class="muted">Approx FPS</span><b id="liveFps">0.0</b></div>
+      <div class="mini"><span class="muted">Orientation</span><b id="liveOrientation">—</b></div>
+      <div class="mini"><span class="muted">Last Frame</span><b id="liveFrameAge">—</b></div>
+    </div>
+    <div class="toolbar"><button id="liveBtn" disabled>Start Live Screen</button><button id="liveRefresh" class="secondary">Refresh Device</button><button id="liveFullscreen" class="secondary">Fullscreen</button></div>
+    <div id="screenWrap" class="screenWrap"><img id="liveImage" class="screen" alt="No live frame"></div>
+    <h3 style="margin-top:16px">Recent Live Sessions</h3>
+    <table><thead><tr><th>Time</th><th>Event</th></tr></thead><tbody id="liveSessions"><tr><td colspan="2" class="muted">No sessions</td></tr></tbody></table>
+  </div>
+</section>
+
+<section id="storageView" class="view">
+  <div class="pageHead"><div><h2>Storage</h2><div class="muted">Screenshot HDD health, usage and cleanup</div></div><button id="storageRefresh" class="secondary">Refresh</button></div>
+  <div class="cards">
+    <div class="card"><span class="muted">Free Space</span><b id="storageFreeBig">—</b></div>
+    <div class="card"><span class="muted">Used</span><b id="storageUsedBig">—</b></div>
+    <div class="card"><span class="muted">Filesystem</span><b id="storageHealth">—</b></div>
+    <div class="card"><span class="muted">Integrity</span><b id="storageIntegrity">—</b></div>
+    <div class="card"><span class="muted">Low Space Alert</span><b id="storageAlert">—</b></div>
+    <div class="card"><span class="muted">Auto Cleanup</span><b id="storageCleanupState">—</b></div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="settingRow"><div><b>Storage Thresholds</b><div id="storageDetails" class="muted">Loading…</div></div><div><input id="lowFreePercent" type="number" min="1" max="50" placeholder="Low free %"><input id="autoCleanupPercent" type="number" min="60" max="99" placeholder="Cleanup used %" style="margin-top:6px;width:100%"></div></div>
+    <div class="toolbar"><button id="saveStorageSettings">Save Thresholds</button><button id="cleanupNow" class="secondary">Run Cleanup Now</button><button id="integrityNow" class="secondary">Integrity Check</button><button id="backupNow" class="secondary">Backup Metadata</button></div>
+    <h3>Usage by Device</h3>
+    <table><thead><tr><th>Device</th><th>Screenshots</th><th>Storage</th><th>Missing</th></tr></thead><tbody id="storageDevices"></tbody></table>
+  </div>
+</section>
+
+<section id="updatesView" class="view">
+  <div class="pageHead"><div><h2>App Updates</h2><div class="muted">Publish and monitor Arivo updates</div></div><button id="updateRefresh" class="secondary">Refresh</button></div>
+  <div class="panel">
+    <div id="updateStatus" class="statusLine muted">No update package published.</div>
+    <div class="twoCol">
+      <div>
+        <input id="updateVersion" placeholder="Version e.g. 1.1.0" style="width:100%;margin-bottom:7px">
+        <input id="updateCode" type="number" min="1" placeholder="Build code e.g. 4" style="width:100%;margin-bottom:7px">
+        <textarea id="updateNotes" placeholder="Release notes" style="width:100%;min-height:100px;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit"></textarea>
+      </div>
+      <div>
+        <input id="updateApk" type="file" accept=".apk,application/vnd.android.package-archive" style="width:100%;margin-bottom:7px">
+        <label class="muted">Rollout <input id="updateRollout" type="number" min="1" max="100" value="100" style="width:90px">%</label><br><br>
+        <label class="muted"><input id="updateRequired" type="checkbox"> Required Update</label>
+        <div class="progress" style="margin-top:12px"><i id="uploadProgress"></i></div>
+        <div id="uploadProgressText" class="muted" style="margin-top:5px">0%</div>
+      </div>
+    </div>
+    <div class="toolbar"><button id="publishUpdate">Publish APK Update</button></div>
+    <h3>Device Update Status</h3>
+    <table><thead><tr><th>Device</th><th>Installed</th><th>Latest</th><th>Status</th><th>Progress</th></tr></thead><tbody id="updateDevices"></tbody></table>
+    <h3 style="margin-top:16px">Update History</h3>
+    <table><thead><tr><th>Time</th><th>Version</th><th>Build</th><th>Rollout</th><th>Type</th></tr></thead><tbody id="updateHistory"></tbody></table>
+  </div>
+</section>
+
+<section id="settingsView" class="view">
+  <div class="pageHead"><div><h2>Settings</h2><div class="muted">General monitoring settings</div></div></div>
+  <div class="panel">
+    <div class="settingRow"><div><b>Global Screenshot Auto-delete</b><div class="muted">Default retention for devices without a custom retention.</div></div>
+      <select id="retention"><option value="0">Never</option><option value="1">After 1 day</option><option value="3">After 3 days</option><option value="7">After 7 days</option><option value="30">After 30 days</option><option value="90">After 90 days</option></select>
+    </div>
+    <div class="toolbar"><button id="saveSettings">Save Settings</button></div>
+  </div>
+</section>
+</main>
+</div>
+
+<div id="shotModal" class="modal" aria-hidden="true"><button id="shotClose">Close</button><img id="shotModalImg" alt="Screenshot preview"></div>
+<div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let devices=[],selected=null,historyRows=[],live=false,liveTimer=null,globalSettings={};
+let selectedDate=localDateKey(new Date()),lastDailyDistanceLoad=0,selectedShots=new Set();
+let lastLiveCount=0,lastLiveMetricAt=0;
+const map=L.map('map').setView([23.7,90.4],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+let routeLayer=L.layerGroup().addTo(map);
+const fmt=t=>t?new Date(t).toLocaleString():'—';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mediaUrl=(file,download=false)=>'/arivo-monitor/media/screenshot/'+encodeURIComponent(selected.device_id)+'/'+encodeURIComponent(file)+(download?'?download=1':'');
+function localDateKey(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day}
+function yesterdayKey(){const d=new Date();d.setDate(d.getDate()-1);return localDateKey(d)}
+async function api(url,opts){const r=await fetch(url,opts);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)}
+function bytesText(v){const n=Number(v||0);return n>=1073741824?(n/1073741824).toFixed(n>10737418240?0:1)+' GB':(n/1048576).toFixed(0)+' MB'}
+function pointsOf(rows){return rows.filter(x=>Number.isFinite(+x.latitude)&&Number.isFinite(+x.longitude)).map(x=>[+x.latitude,+x.longitude])}
+function distanceKm(rows){const p=pointsOf(rows);let km=0;for(let i=1;i<p.length;i++)km+=map.distance(p[i-1],p[i])/1000;return km}
+function filteredHistory(){return historyRows.filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===selectedDate)}
+function detectStays(rows){
+  const clean=rows.filter(x=>x.recorded_at&&Number.isFinite(+x.latitude)&&Number.isFinite(+x.longitude));
+  const stays=[];let i=0;
+  while(i<clean.length){
+    const start=clean[i],anchor=[+start.latitude,+start.longitude];let j=i+1;
+    while(j<clean.length&&map.distance(anchor,[+clean[j].latitude,+clean[j].longitude])<=100)j++;
+    const end=clean[Math.max(i,j-1)],mins=(new Date(end.recorded_at)-new Date(start.recorded_at))/60000;
+    if(mins>=5)stays.push({start,end,mins,lat:anchor[0],lng:anchor[1]});
+    i=Math.max(i+1,j);
+  }
+  return stays;
+}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+  if(id==='locationView')setTimeout(()=>map.invalidateSize(),80);
+  if(id==='shotsView')loadScreenshots();
+  if(id==='liveView')loadLiveStatus();
+  if(id==='storageView')loadStorage();
+  if(id==='updatesView')loadUpdate();
+  if(id==='settingsView')loadSettings();
+}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+async function loadStorage(){
+  try{
+    const [s,byDevice]=await Promise.all([
+      api('/arivo-monitor/admin/storage'),
+      api('/arivo-monitor/admin/storage-devices')
+    ]);
+    const pct=s.total_bytes?Math.max(0,Math.min(100,(s.used_bytes/s.total_bytes)*100)):0;
+    document.getElementById('storageFree').textContent=bytesText(s.free_bytes)+' free';
+    document.getElementById('storageBar').style.width=pct.toFixed(1)+'%';
+    document.getElementById('storageFreeBig').textContent=bytesText(s.free_bytes);
+    document.getElementById('storageUsedBig').textContent=bytesText(s.used_bytes);
+    const smartOk=s.smart&&s.smart.available?s.smart.passed:null;
+    document.getElementById('storageHealth').textContent=!s.writable?'Write Error':(smartOk===true?'SMART OK':smartOk===false?'SMART FAIL':'Mounted');
+    document.getElementById('storageHealth').className=(!s.writable||smartOk===false)?'bad':'good';
+    document.getElementById('storageAlert').textContent=s.low_space?'LOW SPACE':'Normal';
+    document.getElementById('storageAlert').className=s.low_space?'bad':'good';
+    document.getElementById('storageCleanupState').textContent='At '+Number(s.auto_cleanup_used_percent||90)+'% used';
+    document.getElementById('storageDetails').textContent=bytesText(s.used_bytes)+' used · '+bytesText(s.free_bytes)+' free · '+s.path;
+    document.getElementById('lowFreePercent').value=Number(s.low_free_percent||10);
+    document.getElementById('autoCleanupPercent').value=Number(s.auto_cleanup_used_percent||90);
+    document.getElementById('storageDevices').innerHTML=Object.entries(byDevice).length
+      ?Object.entries(byDevice).map(([id,x])=>'<tr><td>'+esc(deviceName(id))+'</td><td>'+x.count+'</td><td>'+bytesText(x.bytes)+'</td><td>'+(x.missing?'<span class="bad">'+x.missing+'</span>':'0')+'</td></tr>').join('')
+      :'<tr><td colspan="4" class="muted">No screenshot data</td></tr>';
+  }catch{
+    document.getElementById('storageFree').textContent='Unavailable';
+    document.getElementById('storageDetails').textContent='Storage unavailable';
+  }
+}
+async function loadSettings(){
+  try{
+    globalSettings=await api('/arivo-monitor/admin/settings');
+    document.getElementById('retention').value=String(globalSettings.screenshot_retention_days||0);
+    if(selected){
+      const custom=globalSettings.per_device_retention?.[selected.device_id];
+      document.getElementById('deviceRetention').value=custom===undefined?'':String(custom);
+    }
+  }catch{}
+}
+function deviceName(id){const d=devices.find(x=>x.device_id===id);return d?(d.model||d.device_name||id):id}
+async function loadUpdate(){
+  try{
+    const [u,h]=await Promise.all([
+      api('/arivo-monitor/admin/update'),
+      api('/arivo-monitor/admin/update-history')
+    ]);
+    if(!u.available){
+      document.getElementById('updateStatus').textContent='No update package published.';
+    }else{
+      document.getElementById('updateStatus').textContent='Published v'+u.version_name+' (build '+u.version_code+') · '+bytesText(u.size_bytes)+' · '+(u.required?'Required':'Optional')+' · '+Number(u.rollout_percent||100)+'% rollout';
+      document.getElementById('updateVersion').value=u.version_name||'';
+      document.getElementById('updateCode').value=u.version_code||'';
+      document.getElementById('updateNotes').value=u.release_notes||'';
+      document.getElementById('updateRollout').value=Number(u.rollout_percent||100);
+      document.getElementById('updateRequired').checked=Boolean(u.required);
+    }
+    document.getElementById('updateDevices').innerHTML=devices.length?devices.map(d=>
+      '<tr><td>'+esc(d.model||d.device_name||d.device_id)+'</td><td>v'+esc(d.app_version||'—')+' ('+esc(d.app_build??'—')+')</td><td>'+esc(d.latest_version||u.version_name||'—')+'</td><td>'+esc(d.update_status||'unknown')+'</td><td>'+Number(d.update_progress||0)+'%</td></tr>'
+    ).join(''):'<tr><td colspan="5" class="muted">No devices</td></tr>';
+    document.getElementById('updateHistory').innerHTML=h.length?h.slice(0,30).map(x=>
+      '<tr><td>'+fmt(x.published_at||x.updated_at)+'</td><td>'+esc(x.version_name||'—')+'</td><td>'+esc(x.version_code??'—')+'</td><td>'+esc(x.rollout_percent??100)+'%</td><td>'+esc(x.event||'published')+'</td></tr>'
+    ).join(''):'<tr><td colspan="5" class="muted">No update history</td></tr>';
+  }catch{}
+}
+function publishUpdate(){
+  const file=document.getElementById('updateApk').files[0];
+  const version=document.getElementById('updateVersion').value.trim();
+  const code=Number(document.getElementById('updateCode').value);
+  const required=document.getElementById('updateRequired').checked;
+  const notes=document.getElementById('updateNotes').value.trim();
+  const rollout=Math.max(1,Math.min(100,Number(document.getElementById('updateRollout').value||100)));
+  if(!file||!version||!Number.isInteger(code)||code<1){toast('Choose APK, version and build code');return}
+  const btn=document.getElementById('publishUpdate');
+  btn.disabled=true;btn.textContent='Uploading…';
+  const url='/arivo-monitor/admin/update-apk?version_name='+encodeURIComponent(version)+'&version_code='+code+'&required='+(required?'1':'0')+'&rollout_percent='+rollout+'&release_notes='+encodeURIComponent(notes);
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST',url);
+  xhr.setRequestHeader('Content-Type','application/vnd.android.package-archive');
+  xhr.upload.onprogress=e=>{
+    if(!e.lengthComputable)return;
+    const p=Math.round(e.loaded*100/e.total);
+    document.getElementById('uploadProgress').style.width=p+'%';
+    document.getElementById('uploadProgressText').textContent=p+'%';
+  };
+  xhr.onload=async()=>{
+    btn.disabled=false;btn.textContent='Publish APK Update';
+    if(xhr.status>=200&&xhr.status<300){
+      document.getElementById('updateApk').value='';
+      document.getElementById('uploadProgress').style.width='100%';
+      document.getElementById('uploadProgressText').textContent='100%';
+      toast('Update published');
+      await loadUpdate();
+    }else toast('Update publish failed');
+  };
+  xhr.onerror=()=>{btn.disabled=false;btn.textContent='Publish APK Update';toast('Update publish failed')};
+  xhr.send(file);
+}
+async function loadDevices(){
+  devices=await api('/arivo-monitor/admin/devices');
+  const on=devices.filter(x=>x.online).length;
+  document.getElementById('total').textContent=devices.length;document.getElementById('online').textContent=on;document.getElementById('offline').textContent=devices.length-on;
+  document.getElementById('sos').textContent=devices.filter(x=>x.sos_active===true).length;
+  document.getElementById('devices').innerHTML=devices.map(d=>
+    '<div class="device '+(selected&&selected.device_id===d.device_id?'selected':'')+'" data-device-id="'+esc(d.device_id)+'">'+
+    '<div><span class="dot '+(d.online?'on':'off')+'"></span><b>'+esc(d.model||d.device_name||d.device_id)+'</b></div>'+
+    '<div class="muted">'+esc(d.device_id)+' · '+(d.online?'Online':'Offline')+' · '+fmt(d.last_seen)+'</div>'+
+    '<div class="muted">Battery '+esc(d.battery??'—')+'% · '+(d.charging?'Charging':'Not charging')+' · '+esc(d.network||'—')+'</div></div>'
+  ).join('');
+  document.querySelectorAll('.device').forEach(el=>el.onclick=()=>selectDevice(el.dataset.deviceId));
+  renderAlerts();loadStorage();
+  if(Date.now()-lastDailyDistanceLoad>60000){lastDailyDistanceLoad=Date.now();loadTodayDistance()}
+  if(selected){const fresh=devices.find(x=>x.device_id===selected.device_id);if(fresh){selected=fresh;renderSelected()}}
+  else if(devices.length)await selectDevice(devices[0].device_id);
+}
+function renderAlerts(){
+  const alerts=[];
+  for(const d of devices){
+    const name=d.model||d.device_name||d.device_id;
+    if(!d.online)alerts.push(name+' is offline');
+    if(Number(d.battery)>=0&&Number(d.battery)<=20)alerts.push(name+' low battery: '+d.battery+'%');
+    if(d.gps_enabled===false)alerts.push(name+' GPS disabled');
+    if(d.screen_monitoring===false)alerts.push(name+' screen monitoring paused');
+    if(d.sos_active===true)alerts.push(name+' SOS active');
+  }
+  document.getElementById('alerts').innerHTML=alerts.length?alerts.slice(0,8).map(x=>'<div class="alert">'+esc(x)+'</div>').join(''):'<div class="muted">No alerts</div>';
+}
+async function loadTodayDistance(){
+  const today=localDateKey(new Date());
+  const histories=await Promise.all(devices.map(async d=>{try{return await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(d.device_id))}catch{return[]}}));
+  let total=0;for(const rows of histories)total+=distanceKm(rows.filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===today));
+  document.getElementById('distance').textContent=total.toFixed(1)+' km';
+}
+function renderSelected(){
+  if(!selected)return;
+  const l=selected.last_location||{},name=selected.model||selected.device_name||selected.device_id;
+  const status=(selected.online?'Online':'Offline')+' · Last sync '+fmt(selected.last_seen)+' · Battery '+(selected.battery??'—')+'% · '+(selected.network||'—')+' · GPS '+(selected.gps_enabled===false?'Off':'On')+' · Screen '+(selected.screen_monitoring?'On':'Paused');
+  document.getElementById('deviceTitle').textContent=name;document.getElementById('status').textContent=status;document.getElementById('liveStatus').textContent=status;
+  document.getElementById('shotsDevice').textContent=name+' · Last screenshot '+fmt(selected.last_screenshot);
+  document.getElementById('overviewDevice').innerHTML='<b>'+esc(name)+'</b><div class="muted" style="margin-top:7px">'+esc(status)+'</div>';
+  document.getElementById('liveBtn').disabled=!selected.screen_monitoring;
+  document.getElementById('liveBtn').textContent=selected.screen_monitoring?(live?'Stop Live Screen':'Start Live Screen'):'Screen Permission Required';
+}
+async function selectDevice(id){
+  selected=devices.find(x=>x.device_id===id);if(!selected)return;
+  document.querySelectorAll('.device').forEach(el=>el.classList.toggle('selected',el.dataset.deviceId===id));
+  renderSelected();
+  historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
+  await Promise.all([renderHistory(),loadScreenshots()]);
+}
+async function renderHistory(){
+  if(!selected)return;
+  const rows=filteredHistory(),display=rows.slice(-20).reverse();
+  document.getElementById('history').innerHTML=display.length?display.map(x=>'<tr><td>'+fmt(x.recorded_at)+'</td><td>'+esc(x.latitude)+'</td><td>'+esc(x.longitude)+'</td><td>'+esc(x.accuracy??'—')+' m</td></tr>').join(''):'<tr><td colspan="4" class="muted">No location data</td></tr>';
+  routeLayer.clearLayers();
+  const routeRows=rows.length>900?rows.filter((_,i)=>i%Math.ceil(rows.length/900)===0):rows,points=pointsOf(routeRows);
+  if(points.length){L.polyline(points).addTo(routeLayer);L.marker(points[0]).bindTooltip('First').addTo(routeLayer);L.marker(points[points.length-1]).bindTooltip('Last').addTo(routeLayer);map.fitBounds(L.latLngBounds(points),{padding:[22,22],maxZoom:16})}
+  document.getElementById('selectedDistance').textContent=distanceKm(rows).toFixed(2)+' km';
+  const first=rows[0],last=rows[rows.length-1];
+  document.getElementById('firstLocation').textContent=first?new Date(first.recorded_at).toLocaleTimeString():'—';
+  document.getElementById('lastLocation').textContent=last?new Date(last.recorded_at).toLocaleTimeString():'—';
+  const stays=detectStays(rows);document.getElementById('stayTime').textContent=Math.round(stays.reduce((s,x)=>s+x.mins,0))+' min';
+  document.getElementById('stays').innerHTML=stays.length?stays.slice(-10).reverse().map(s=>'<tr><td>'+fmt(s.start.recorded_at)+'</td><td>'+fmt(s.end.recorded_at)+'</td><td>'+Math.round(s.mins)+' min</td></tr>').join(''):'<tr><td colspan="3" class="muted">No 5+ minute stays</td></tr>';
+}
+async function loadScreenshots(){
+  if(!selected)return;
+  selectedShots.clear();
+  const date=document.getElementById('shotDate').value;
+  const q='/arivo-monitor/admin/screenshots?device_id='+encodeURIComponent(selected.device_id)+'&limit=200'+(date?'&date='+encodeURIComponent(date):'');
+  const [rows,stats]=await Promise.all([
+    api(q),
+    api('/arivo-monitor/admin/screenshot-stats?device_id='+encodeURIComponent(selected.device_id))
+  ]);
+  document.getElementById('shotCount').textContent=stats.count||0;
+  document.getElementById('shotBytes').textContent=bytesText(stats.bytes||0);
+  document.getElementById('shotToday').textContent=stats.by_day?.[localDateKey(new Date())]||0;
+  document.getElementById('shotIntegrity').textContent=stats.missing?'Missing '+stats.missing:'OK';
+  document.getElementById('shotIntegrity').className=stats.missing?'bad':'good';
+  document.getElementById('shots').innerHTML=rows.length?rows.map(x=>
+    '<div class="shot" data-file="'+esc(x.file)+'"><label class="muted"><input class="shotCheck" type="checkbox" data-file="'+esc(x.file)+'"> Select</label><img loading="lazy" src="'+mediaUrl(x.file)+'"><div class="muted">'+fmt(x.captured_at)+' · '+bytesText(x.bytes||0)+'</div><div class="shotActions"><a href="'+mediaUrl(x.file,true)+'">Download</a><button class="danger deleteShot" data-file="'+esc(x.file)+'">Delete</button></div></div>'
+  ).join(''):'<div class="muted">No screenshots for this filter.</div>';
+  document.querySelectorAll('#shots img').forEach(img=>img.onclick=()=>openImage(img.src));
+  document.querySelectorAll('.deleteShot').forEach(btn=>btn.onclick=()=>deleteScreenshot(btn.dataset.file));
+  document.querySelectorAll('.shotCheck').forEach(cb=>cb.onchange=()=>{
+    if(cb.checked)selectedShots.add(cb.dataset.file);else selectedShots.delete(cb.dataset.file);
+    cb.closest('.shot')?.classList.toggle('selected',cb.checked);
+  });
+  await loadSettings();
+}
+async function deleteScreenshot(file){
+  if(!selected||!confirm('Delete this screenshot permanently?'))return;
+  await api('/arivo-monitor/admin/screenshot?device_id='+encodeURIComponent(selected.device_id)+'&file='+encodeURIComponent(file),{method:'DELETE'});
+  toast('Screenshot deleted');await loadScreenshots();await loadStorage();await loadDevices();
+}
+async function bulkDeleteScreenshots(){
+  if(!selected||!selectedShots.size)return toast('Select screenshots first');
+  if(!confirm('Delete '+selectedShots.size+' selected screenshots permanently?'))return;
+  const r=await api('/arivo-monitor/admin/screenshots-bulk-delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({device_id:selected.device_id,files:[...selectedShots]})});
+  toast(r.removed+' screenshots deleted');await loadScreenshots();await loadStorage();
+}
+function downloadSelectedScreenshots(){
+  if(!selectedShots.size)return toast('Select screenshots first');
+  [...selectedShots].forEach((file,i)=>setTimeout(()=>{
+    const a=document.createElement('a');a.href=mediaUrl(file,true);a.download=file;document.body.appendChild(a);a.click();a.remove();
+  },i*180));
+}
+async function saveDeviceRetention(){
+  if(!selected)return;
+  await loadSettings();
+  const raw=document.getElementById('deviceRetention').value;
+  const per={...(globalSettings.per_device_retention||{})};
+  if(raw==='')delete per[selected.device_id];else per[selected.device_id]=Number(raw);
+  const r=await api('/arivo-monitor/admin/settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({per_device_retention:per})});
+  globalSettings=r;toast('Device retention saved');
+}
+function openImage(src){document.getElementById('shotModalImg').src=src;document.getElementById('shotModal').classList.add('open');document.getElementById('shotModal').setAttribute('aria-hidden','false')}
+function closeImage(){document.getElementById('shotModal').classList.remove('open');document.getElementById('shotModal').setAttribute('aria-hidden','true')}
+function setHistoryDate(key){selectedDate=key;document.getElementById('historyDate').value=key;renderHistory()}
+document.getElementById('todayBtn').onclick=()=>setHistoryDate(localDateKey(new Date()));
+document.getElementById('yesterdayBtn').onclick=()=>setHistoryDate(yesterdayKey());
+document.getElementById('historyDate').onchange=e=>{if(e.target.value)setHistoryDate(e.target.value)};
+document.getElementById('historyDate').value=selectedDate;
+async function loadLiveStatus(){
+  if(!selected)return;
+  try{
+    const s=await api('/arivo-monitor/admin/live-status?device_id='+encodeURIComponent(selected.device_id));
+    live=Boolean(s.live);
+    const nowTs=Date.now(),count=Number(s.frame_count||0);
+    if(lastLiveMetricAt&&nowTs>lastLiveMetricAt){
+      const fps=Math.max(0,(count-lastLiveCount)/((nowTs-lastLiveMetricAt)/1000));
+      document.getElementById('liveFps').textContent=fps.toFixed(1);
+    }
+    lastLiveCount=count;lastLiveMetricAt=nowTs;
+    const age=s.frame_age_ms==null?null:Number(s.frame_age_ms);
+    document.getElementById('liveConnection').textContent=live?(age!=null&&age<5000?'Live':'Waiting'):'Stopped';
+    document.getElementById('liveConnection').className=live?(age!=null&&age<5000?'good':'warn'):'';
+    document.getElementById('liveFrameAge').textContent=age==null?'—':(age<1000?'Now':Math.round(age/1000)+'s ago');
+    document.getElementById('liveSessions').innerHTML=s.sessions?.length?s.sessions.map(x=>'<tr><td>'+fmt(x.at)+'</td><td>'+esc(x.event)+'</td></tr>').join(''):'<tr><td colspan="2" class="muted">No sessions</td></tr>';
+    renderSelected();
+  }catch{}
+}
+document.getElementById('liveBtn').onclick=async()=>{
+  if(!selected||!selected.screen_monitoring)return;
+  live=!live;
+  await api('/arivo-monitor/admin/live',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({device_id:selected.device_id,enabled:live})});
+  renderSelected();
+  if(live){
+    clearInterval(liveTimer);
+    const tick=()=>{document.getElementById('liveImage').src='/arivo-monitor/media/live/'+encodeURIComponent(selected.device_id)+'.jpg?t='+Date.now()};
+    tick();liveTimer=setInterval(tick,900);
+  }else{clearInterval(liveTimer);liveTimer=null}
+  await loadLiveStatus();
+};
+document.getElementById('liveImage').onload=()=>{
+  const img=document.getElementById('liveImage');
+  document.getElementById('liveOrientation').textContent=img.naturalWidth>=img.naturalHeight?'Landscape':'Portrait';
+};
+document.getElementById('liveImage').onclick=()=>{if(document.getElementById('liveImage').src)openImage(document.getElementById('liveImage').src)};
+document.getElementById('liveFullscreen').onclick=()=>{
+  const el=document.getElementById('screenWrap');
+  if(el.requestFullscreen)el.requestFullscreen();
+};
+document.getElementById('shotClose').onclick=closeImage;document.getElementById('shotModal').onclick=e=>{if(e.target.id==='shotModal')closeImage()};
+document.getElementById('shotDate').onchange=loadScreenshots;
+document.getElementById('shotClearDate').onclick=()=>{document.getElementById('shotDate').value='';loadScreenshots()};
+document.getElementById('shotSelectAll').onclick=()=>{
+  const boxes=[...document.querySelectorAll('.shotCheck')],all=boxes.length&&boxes.every(x=>x.checked);
+  boxes.forEach(cb=>{cb.checked=!all;cb.dispatchEvent(new Event('change'))});
+};
+document.getElementById('shotDownloadSelected').onclick=downloadSelectedScreenshots;
+document.getElementById('shotDeleteSelected').onclick=bulkDeleteScreenshots;
+document.getElementById('saveDeviceRetention').onclick=saveDeviceRetention;
+document.getElementById('saveSettings').onclick=async()=>{
+  await loadSettings();
+  const days=Number(document.getElementById('retention').value);
+  const r=await api('/arivo-monitor/admin/settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({screenshot_retention_days:days})});
+  globalSettings=r;toast('Settings saved'+(r.removed?' · '+r.removed+' old screenshots deleted':''));await loadStorage();if(selected)await loadScreenshots();
+};
+document.getElementById('saveStorageSettings').onclick=async()=>{
+  await loadSettings();
+  const body={
+    storage_low_free_percent:Number(document.getElementById('lowFreePercent').value||10),
+    storage_auto_cleanup_used_percent:Number(document.getElementById('autoCleanupPercent').value||90)
+  };
+  globalSettings=await api('/arivo-monitor/admin/settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  toast('Storage thresholds saved');await loadStorage();
+};
+document.getElementById('cleanupNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/cleanup-screenshots',{method:'POST'});toast('Cleanup complete · '+r.removed+' deleted');await loadStorage();if(selected)await loadScreenshots()};
+document.getElementById('integrityNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-integrity',{method:'POST'});document.getElementById('storageIntegrity').textContent=r.ok?'OK':'Issues';document.getElementById('storageIntegrity').className=r.ok?'good':'bad';toast(r.ok?'Integrity OK':'Missing '+r.missing+' · Orphaned '+r.orphaned)};
+document.getElementById('backupNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-backup',{method:'POST'});toast('Metadata backup created · '+r.file)};
+document.getElementById('publishUpdate').onclick=publishUpdate;
+document.getElementById('overviewRefresh').onclick=loadDevices;document.getElementById('devicesRefresh').onclick=loadDevices;
+document.getElementById('shotsRefresh').onclick=loadScreenshots;document.getElementById('liveRefresh').onclick=()=>selected&&selectDevice(selected.device_id);
+document.getElementById('storageRefresh').onclick=loadStorage;document.getElementById('updateRefresh').onclick=loadUpdate;
+setInterval(async()=>{
+  try{
+    await loadDevices();
+    if(selected){
+      historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
+      if(document.getElementById('locationView').classList.contains('active'))await renderHistory();
+      if(document.getElementById('liveView').classList.contains('active'))await loadLiveStatus();
+    }
+    if(document.getElementById('updatesView').classList.contains('active'))await loadUpdate();
+  }catch{}
+},10000);
+loadSettings();loadDevices();
+</script>
+</body>
+</html>
