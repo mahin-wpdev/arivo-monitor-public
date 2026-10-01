@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.4 - 2026-10-01
+
+- New installations automatically register on first app launch without a dashboard connection link; Android permissions and screen-sharing consent remain unchanged.
+- Automatic enrollment issues independent random identities and device-scoped tokens, preserving existing activated devices, encrypted storage and the existing signer.
+- Added server-side enrollment rate/capacity limits and an ARIVO_AUTO_ENROLL=false switch to disable public registration later.
+
 ## 1.1.3 - 2026-10-01
 
 - Enabled public APK distribution without embedding the production device key, preserving the existing Android signer and mobile UI.

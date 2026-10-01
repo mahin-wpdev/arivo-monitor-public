@@ -54,8 +54,7 @@ class ScreenCaptureService : Service() {
     private var lastCommandPoll = 0L
     override fun onCreate() {
         super.onCreate()
-        deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-            ?: "unknown-device"
+        deviceId = AppConfig.deviceId(applicationContext)
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         createChannel()
         startForeground(

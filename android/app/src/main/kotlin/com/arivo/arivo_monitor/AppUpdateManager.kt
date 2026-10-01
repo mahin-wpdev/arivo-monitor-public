@@ -56,10 +56,7 @@ object AppUpdateManager {
 
         executor.execute {
             try {
-                val deviceId = Settings.Secure.getString(
-                    context.contentResolver,
-                    Settings.Secure.ANDROID_ID
-                ) ?: "unknown-device"
+                val deviceId = AppConfig.deviceId(context)
                 val connection = URL(
                     AppConfig.SERVER_BASE_URL + "/device/update?device_id=" + deviceId
                 ).openConnection() as HttpURLConnection

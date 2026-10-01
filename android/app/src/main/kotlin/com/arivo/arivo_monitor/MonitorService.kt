@@ -37,8 +37,7 @@ class MonitorService : Service(), LocationListener {
     private val queueLock = Any()
     override fun onCreate() {
         super.onCreate()
-        deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-            ?: Build.SERIAL ?: "unknown-device"
+        deviceId = AppConfig.deviceId(applicationContext)
         createChannel()
         startForeground(
             1001,

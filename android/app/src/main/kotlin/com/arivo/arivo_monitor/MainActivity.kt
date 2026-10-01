@@ -26,6 +26,7 @@ class MainActivity : FlutterActivity() {
     private val permissionRequest = 1001
     private val projectionRequest = 2001
     private val activationIo = Executors.newSingleThreadExecutor()
+    private var activationPending = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +50,7 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         AppConfig.initialize(applicationContext)
+        if (AppConfig.DEVICE_KEY.isBlank()) activate()
         Handler(Looper.getMainLooper()).postDelayed({
             AppUpdateManager.checkAndPrompt(this)
         }, 700)
@@ -60,6 +62,7 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 if (call.method == "startMonitoring") {
                     if (AppConfig.DEVICE_KEY.isBlank()) {
+                        activate()
                         result.success(true)
                         return@setMethodCallHandler
                     }
@@ -69,28 +72,31 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun activate(code: String) {
-        if (!code.replace(Regex("[\\s-]"), "").matches(Regex("[a-fA-F0-9]{20}"))) {
+    private fun activate(code: String? = null) {
+        if (code != null && !code.replace(Regex("[\\s-]"), "").matches(Regex("[a-fA-F0-9]{20}"))) {
             return
         }
+        if (activationPending || (code == null && AppConfig.DEVICE_KEY.isNotBlank())) return
+        activationPending = true
         activationIo.execute {
             var connection: HttpURLConnection? = null
             try {
                 require(AppConfig.SERVER_BASE_URL.startsWith("https://"))
-                val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-                    ?: throw IllegalStateException("Device identity unavailable")
-                connection = URL(AppConfig.SERVER_BASE_URL + "/device/enroll")
+                val deviceId = AppConfig.deviceId(applicationContext)
+                connection = URL(AppConfig.SERVER_BASE_URL + if (code == null) "/device/auto-enroll" else "/device/enroll")
                     .openConnection() as HttpURLConnection
                 connection.requestMethod = "POST"
                 connection.connectTimeout = 10000
                 connection.readTimeout = 10000
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
-                val body = JSONObject().put("code", code).put("device_id", deviceId)
+                val body = if (code == null) JSONObject() else JSONObject().put("code", code).put("device_id", deviceId)
                 connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                 if (connection.responseCode != 200) throw IllegalStateException("Activation rejected")
                 val response = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                AppConfig.saveToken(applicationContext, response.getString("token"))
+                if (code == null) AppConfig.saveToken(applicationContext,
+                    response.getString("token"), response.getString("device_id"))
+                else AppConfig.saveToken(applicationContext, response.getString("token"))
                 getSharedPreferences("arivo_app_update", MODE_PRIVATE).edit().putLong("last_check", 0L).apply()
                 runOnUiThread {
                     if (!isFinishing) {
@@ -103,6 +109,7 @@ class MainActivity : FlutterActivity() {
                 // A failed or expired link can be replaced there without logging credentials.
             } finally {
                 connection?.disconnect()
+                runOnUiThread { activationPending = false }
             }
         }
     }

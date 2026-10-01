@@ -7,7 +7,7 @@ const net = require('node:net');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 
-test('HTTP enrollment requires admin approval and tokens cannot impersonate another phone', async t => {
+test('manual and automatic enrollment retain device-scoped authorization', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'arivo-api-test-'));
   const port = await new Promise(resolve => {
     const listener = net.createServer();
@@ -68,4 +68,18 @@ test('HTTP enrollment requires admin approval and tokens cannot impersonate anot
   })).status, 200);
   assert.equal((await fetch(base + '/device/update', { headers: { 'x-arivo-key': legacy } })).status, 200);
   assert.equal((await fetch(base + '/device/update')).status, 401);
+  const automatic = await fetch(base + '/device/auto-enroll', {
+    method: 'POST', headers: json(), body: JSON.stringify({ device_id: 'test-phone' })
+  });
+  assert.equal(automatic.status, 200);
+  const registration = await automatic.json();
+  assert.match(registration.device_id, /^[a-f0-9]{32}$/);
+  assert.notEqual(registration.device_id, 'test-phone');
+  assert.equal((await fetch(base + '/device/update?device_id=test-phone', {
+    headers: { 'x-arivo-key': registration.token }
+  })).status, 403);
+  assert.equal((await fetch(base + '/device/update', { headers })).status, 200);
+  assert.equal((await fetch(base + '/device/update?device_id=' + registration.device_id, {
+    headers: { 'x-arivo-key': registration.token }
+  })).status, 200);
 });

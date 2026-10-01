@@ -19,6 +19,16 @@ function createEnrollmentStore(directory, clock = Date.now) {
   };
   const normaliseCode = value => String(value || '').replace(/[\s-]/g, '').toUpperCase();
   return {
+    registerAuto() {
+      // Server-generated identity prevents anonymous callers claiming an existing phone.
+      const deviceId = crypto.randomBytes(16).toString('hex');
+      const token = crypto.randomBytes(32).toString('hex');
+      const tokens = read(tokensFile);
+      if (Object.keys(tokens).length >= 1000) return null;
+      tokens[hash(token)] = { device_id: deviceId, enrolled_at: new Date(clock()).toISOString() };
+      write(tokensFile, tokens);
+      return { token, device_id: deviceId };
+    },
     issue() {
       const codes = read(codesFile);
       for (const [key, entry] of Object.entries(codes)) {

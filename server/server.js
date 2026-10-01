@@ -243,12 +243,18 @@ const requireAdmin = (req, res) => {
   return false;
 };
 async function deviceApi(req, res, url) {
-  if (req.method === 'POST' && url.pathname === '/device/enroll') {
+  if (req.method === 'POST' && ['/device/enroll', '/device/auto-enroll'].includes(url.pathname)) {
     if (Date.now() - enrollmentWindow >= 60000) {
       enrollmentAttempts = 0;
       enrollmentWindow = Date.now();
     }
     if (++enrollmentAttempts > 60) return sendJson(res, 429, { error: 'try_again_later' });
+    if (url.pathname === '/device/auto-enroll') {
+      if (ENV.ARIVO_AUTO_ENROLL === 'false') return sendJson(res, 403, { error: 'automatic_enrollment_disabled' });
+      const enrolled = enrollment.registerAuto();
+      if (!enrolled) return sendJson(res, 429, { error: 'enrollment_capacity_reached' });
+      return sendJson(res, 200, enrolled);
+    }
     const data = JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}');
     const token = enrollment.redeem(data.code, data.device_id);
     if (!token) return sendJson(res, 401, { error: 'invalid_or_expired_code' });
