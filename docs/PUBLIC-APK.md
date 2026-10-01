@@ -67,6 +67,18 @@ The public source export omits production workflow files and local configuration
 Its history contains only reviewed snapshots; the private production history
 is not exported. Older APKs that contain a shared production key stay private.
 
+## Verified release: 1.1.6+10 (2026-10-02)
+
+- Original Flutter UI test and four enrollment tests passed; native release build,
+  pinned signer check and production credential scan passed.
+- The exact published APK was installed through the app's Android installer flow;
+  installed SHA-256 matched `a7e936cd48c1b524a351cfffc3601b9aee616d627e5bdd34ab17b4c4ed42f0b8`.
+- A real reboot and first unlock delivered the visible startup notification.
+  The user chose Allow and confirmed the consent screen closed automatically.
+- A fresh build-10 heartbeat reported update_status=current and recording active.
+  This phone used the notification path; automatic foreground opening is not
+  guaranteed across Android versions and vendors.
+
 ## Verified release: 1.1.3+7 (2026-10-01)
 
 - Flutter's original UI test passed, and the mobile UI source is unchanged from
