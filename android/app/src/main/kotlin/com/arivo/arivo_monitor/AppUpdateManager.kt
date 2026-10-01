@@ -22,6 +22,7 @@ import java.util.concurrent.Executors
 object AppUpdateManager {
     private const val PREFS = "arivo_app_update"
     private const val CHECK_INTERVAL_MS = 30 * 60 * 1000L
+    private const val FOREGROUND_CHECK_INTERVAL_MS = 60 * 1000L
     private val executor = Executors.newSingleThreadExecutor()
     @Volatile private var checking = false
     @Volatile private var dialogShowing = false
@@ -30,27 +31,26 @@ object AppUpdateManager {
         check(context.applicationContext, null)
     }
     fun checkAndPrompt(activity: Activity) {
+        if (activity.isFinishing || activity.isDestroyed || !activity.hasWindowFocus()) return
         if (AppConfig.DEVICE_KEY.isBlank()) return
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (checking) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (!activity.isFinishing) checkAndPrompt(activity)
-            }, 1000)
             return
         }
-        if (now - prefs.getLong("last_check", 0L) < CHECK_INTERVAL_MS) {
+        if (now - prefs.getLong("last_check", 0L) < FOREGROUND_CHECK_INTERVAL_MS) {
             promptIfReady(activity)
             return
         }
         check(activity.applicationContext, activity)
     }
 
-    private fun check(context: Context, activity: Activity?) {
+    @Synchronized private fun check(context: Context, activity: Activity?) {
         if (AppConfig.DEVICE_KEY.isBlank()) return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (checking || now - prefs.getLong("last_check", 0L) < CHECK_INTERVAL_MS) return
+        val interval = if (activity == null) CHECK_INTERVAL_MS else FOREGROUND_CHECK_INTERVAL_MS
+        if (checking || now - prefs.getLong("last_check", 0L) < interval) return
         prefs.edit().putLong("last_check", now).apply()
         checking = true
 
@@ -199,10 +199,13 @@ object AppUpdateManager {
     }
 
     fun promptIfReady(activity: Activity) {
+        if (activity.isFinishing || activity.isDestroyed || !activity.hasWindowFocus()) return
         if (dialogShowing) return
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val code = prefs.getInt("version_code", 0)
         if (code <= BuildConfig.VERSION_CODE) return
+        if (prefs.getInt("deferred_build", 0) == code &&
+            System.currentTimeMillis() < prefs.getLong("prompt_after", 0L)) return
         val apk = File(prefs.getString("apk_path", "") ?: "")
         if (!apk.exists()) return
         val version = prefs.getString("version_name", code.toString()) ?: code.toString()
@@ -223,11 +226,19 @@ object AppUpdateManager {
                 install(activity, apk)
             }
         if (!required) {
-            builder.setNegativeButton("Later") { _, _ -> dialogShowing = false }
+            builder.setNegativeButton("Later") { _, _ ->
+                deferPrompt(prefs, code)
+                dialogShowing = false
+            }
         }
         builder.setCancelable(!required)
+        if (!required) builder.setOnCancelListener { deferPrompt(prefs, code) }
         builder.setOnDismissListener { dialogShowing = false }
         builder.show()
+    }
+    private fun deferPrompt(prefs: SharedPreferences, code: Int) {
+        prefs.edit().putInt("deferred_build", code)
+            .putLong("prompt_after", System.currentTimeMillis() + CHECK_INTERVAL_MS).apply()
     }
     private fun install(activity: Activity, apk: File) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&

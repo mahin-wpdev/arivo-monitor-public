@@ -13,6 +13,10 @@ class ProjectionPermissionActivity : Activity() {
         super.onCreate(savedInstanceState)
         launched = savedInstanceState?.getBoolean(KEY_LAUNCHED, false) ?: false
         if (!launched) {
+            if (!ScreenCaptureConsent.begin()) {
+                finishAndRemoveTask()
+                return
+            }
             launched = true
             val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             @Suppress("DEPRECATION")
@@ -40,6 +44,8 @@ class ProjectionPermissionActivity : Activity() {
                 startService(service)
             }
         }
+
+        if (requestCode == REQUEST_CODE && (resultCode != RESULT_OK || data == null)) ScreenCaptureConsent.complete()
 
         finishAndRemoveTask()
     }

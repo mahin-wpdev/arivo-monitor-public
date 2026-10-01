@@ -20,8 +20,10 @@ class BootReceiver : BroadcastReceiver() {
                 val storage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     context.createDeviceProtectedStorageContext()
                 } else context
-                storage.getSharedPreferences("arivo_monitor_state", Context.MODE_PRIVATE)
-                    .edit().putBoolean("screen_monitoring", false).apply()
+                if (!ScreenCaptureService.isCapturing) {
+                    storage.getSharedPreferences("arivo_monitor_state", Context.MODE_PRIVATE)
+                        .edit().putBoolean("screen_monitoring", false).apply()
+                }
                 start(context)
 
                 if (action == Intent.ACTION_USER_UNLOCKED) {

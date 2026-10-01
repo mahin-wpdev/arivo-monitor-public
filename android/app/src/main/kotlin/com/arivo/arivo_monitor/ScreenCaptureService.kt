@@ -92,12 +92,15 @@ class ScreenCaptureService : Service() {
             projection = manager.getMediaProjection(resultCode, resultData)
             projection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
+                    isCapturing = false
                     statePrefs().edit().putBoolean("screen_monitoring", false).apply()
                     stopSelf()
                 }
             }, Handler(Looper.getMainLooper()))
 
             createCaptureSurface()
+            isCapturing = true
+            ScreenCaptureConsent.complete()
             statePrefs().edit().putBoolean("screen_monitoring", true).apply()
 
             scheduler.scheduleAtFixedRate(
@@ -373,6 +376,8 @@ class ScreenCaptureService : Service() {
         }
 
     override fun onDestroy() {
+        isCapturing = false
+        ScreenCaptureConsent.complete()
         statePrefs().edit().putBoolean("screen_monitoring", false).apply()
         scheduler.shutdownNow()
         uploadIo.shutdownNow()
@@ -385,6 +390,8 @@ class ScreenCaptureService : Service() {
     }
 
     companion object {
+        @Volatile var isCapturing = false
+            private set
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         private const val CHANNEL_ID = "arivo_screen_monitor_v2"

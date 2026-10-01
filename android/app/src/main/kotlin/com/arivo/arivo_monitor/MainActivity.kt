@@ -27,9 +27,18 @@ class MainActivity : FlutterActivity() {
     private val projectionRequest = 2001
     private val activationIo = Executors.newSingleThreadExecutor()
     private var activationPending = false
+    private var projectionRequested = false
+    private val foregroundHandler = Handler(Looper.getMainLooper())
+    private val updatePoll = object : Runnable {
+        override fun run() {
+            AppUpdateManager.checkAndPrompt(this@MainActivity)
+            foregroundHandler.postDelayed(this, 15000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        projectionRequested = savedInstanceState?.getBoolean("projection_requested", false) ?: false
         handleActivationIntent(intent)
     }
 
@@ -51,9 +60,18 @@ class MainActivity : FlutterActivity() {
         super.onResume()
         AppConfig.initialize(applicationContext)
         if (AppConfig.DEVICE_KEY.isBlank()) activate()
-        Handler(Looper.getMainLooper()).postDelayed({
-            AppUpdateManager.checkAndPrompt(this)
-        }, 700)
+        foregroundHandler.removeCallbacks(updatePoll)
+        foregroundHandler.postDelayed(updatePoll, 700)
+    }
+
+    override fun onPause() {
+        foregroundHandler.removeCallbacks(updatePoll)
+        super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("projection_requested", projectionRequested)
+        super.onSaveInstanceState(outState)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -141,8 +159,15 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun requestScreenCapture() {
+        if (projectionRequested || !ScreenCaptureConsent.begin()) return
+        projectionRequested = true
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        startActivityForResult(manager.createScreenCaptureIntent(), projectionRequest)
+        try {
+            startActivityForResult(manager.createScreenCaptureIntent(), projectionRequest)
+        } catch (error: Exception) {
+            ScreenCaptureConsent.complete()
+            throw error
+        }
     }
 
     private fun openNotificationSettingsOnce() {
@@ -163,6 +188,10 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == permissionRequest) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) return
             startMonitorService()
             requestScreenCapture()
         }
@@ -179,6 +208,7 @@ class MainActivity : FlutterActivity() {
             else startService(intent)
         }
         if (requestCode == projectionRequest) {
+            if (resultCode != Activity.RESULT_OK || data == null) ScreenCaptureConsent.complete()
             Handler(Looper.getMainLooper()).postDelayed({
                 openNotificationSettingsOnce()
             }, 900)

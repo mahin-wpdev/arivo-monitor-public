@@ -35,6 +35,14 @@ activation and use the same Android signing identity.
 
 ## Automatic updates
 
+From 1.1.5+9, a visible foreground app checks metadata at most once per minute
+and polls every 15 seconds so a background download can show the existing install
+dialog without reopening the app. Choosing Later or dismissing an optional update
+defers that build's prompt for 30 minutes. Background checks keep their 30-minute
+interval. Capture consent is not requested again while the existing session is
+active, pending or already requested by that activity. Android still requires new
+consent after a recording session ends (for example after reboot or user stop).
+
 Activated phones check the existing HTTPS update endpoint in the background.
 The app verifies downloaded APK SHA-256 and shows the Android installer prompt.
 Android still requires the user's installation approval and may require allowing

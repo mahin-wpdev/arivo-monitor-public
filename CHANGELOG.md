@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.5 - 2026-10-02
+
+- Suppressed duplicate screen-recording consent requests when a capture session is active or another consent dialog is pending, and retained request state across activity recreation.
+- Foreground update checks now refresh within one minute and poll for completed background downloads while the app remains visible; update dialogs wait until the app has focus.
+- Preserved the mobile UI, automatic enrollment, Android installer approval, signing identity and required consent for each new recording session.
+
 ## 1.1.4 - 2026-10-01
 
 - New installations automatically register on first app launch without a dashboard connection link; Android permissions and screen-sharing consent remain unchanged.
