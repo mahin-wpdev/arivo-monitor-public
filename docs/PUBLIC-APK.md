@@ -35,6 +35,15 @@ activation and use the same Android signing identity.
 
 ## Automatic updates
 
+From 1.1.6+10, after reboot and first unlock an activated phone requests recording
+consent once for that boot. Android may allow the permission activity to open;
+if background activity launch is blocked, a visible **Arivo screen recording**
+notification opens the real consent prompt when tapped. POST_NOTIFICATIONS must
+be allowed for this fallback. Allow starts a new visible recording service;
+Cancel leaves recording off. Either choice closes only the permission activity.
+Internet is not required to display the prompt. No consent, screen-lock, activity
+launch or notification restrictions are bypassed.
+
 From 1.1.5+9, a visible foreground app checks metadata at most once per minute
 and polls every 15 seconds so a background download can show the existing install
 dialog without reopening the app. Choosing Later or dismissing an optional update

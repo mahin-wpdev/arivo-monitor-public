@@ -15,7 +15,6 @@ class BootReceiver : BroadcastReceiver() {
         when (action) {
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_USER_UNLOCKED,
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 val storage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     context.createDeviceProtectedStorageContext()
@@ -24,25 +23,16 @@ class BootReceiver : BroadcastReceiver() {
                     storage.getSharedPreferences("arivo_monitor_state", Context.MODE_PRIVATE)
                         .edit().putBoolean("screen_monitoring", false).apply()
                 }
-                start(context)
+                try {
+                    start(context)
+                } catch (_: Exception) {
+                    Log.w("ArivoMonitor", "Monitoring startup requires foreground permission")
+                }
 
-                if (action == Intent.ACTION_USER_UNLOCKED) {
-                    showProjectionPermission(context)
+                if (action == Intent.ACTION_BOOT_COMPLETED) {
+                    StartupRecordingConsent.request(context)
                 }
             }
-        }
-    }
-
-    private fun showProjectionPermission(context: Context) {
-        try {
-            val intent = Intent(context, ProjectionPermissionActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-            }
-            context.startActivity(intent)
-        } catch (error: Exception) {
-            Log.w("ArivoMonitor", "Projection permission activity could not be shown", error)
         }
     }
 

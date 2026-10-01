@@ -11,6 +11,12 @@ class ProjectionPermissionActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppConfig.initialize(applicationContext)
+        StartupRecordingConsent.opened(this)
+        if (AppConfig.DEVICE_KEY.isBlank()) {
+            finishAndRemoveTask()
+            return
+        }
         launched = savedInstanceState?.getBoolean(KEY_LAUNCHED, false) ?: false
         if (!launched) {
             if (!ScreenCaptureConsent.begin()) {
@@ -32,6 +38,16 @@ class ProjectionPermissionActivity : Activity() {
     @Deprecated("Deprecated in Android API, retained for MediaProjection compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_CODE &&
+            (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+             androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+            val monitor = Intent(this, MonitorService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor)
+            else startService(monitor)
+        }
 
         if (requestCode == REQUEST_CODE && resultCode == RESULT_OK && data != null) {
             val service = Intent(this, ScreenCaptureService::class.java)
