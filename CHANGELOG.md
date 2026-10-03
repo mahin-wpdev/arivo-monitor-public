@@ -36,6 +36,7 @@
 - GitHub-managed update pipeline enabled and verified.
 
 ## Unreleased
+- Added a persistent device selector across dashboard pages so Location, Screenshots, Live Screen and device settings can switch between phones without returning to the Devices page.
 - Added an all-device overview table with per-device online status, heartbeat, battery, network, permissions, last location and today’s distance, plus selection-based multi-device route comparison on the location map.
 - Repaired production Nginx HTTP-01 challenge routing for certificate renewal, verified renewal and the automatic reload hook, and documented the aaPanel/Certbot configuration and recovery checks in docs/HTTPS-RENEWAL.md; confirmed a fresh real-device heartbeat and current update status on the unchanged 1.1.2+6 release.
 - Release/update management helpers now enforce normal HTTPS certificate validation instead of accepting invalid or expired TLS certificates, so GitHub workflows cannot report a false-success path that Android devices would reject.

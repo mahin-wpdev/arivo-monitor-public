@@ -20,6 +20,7 @@ main{padding:20px;min-width:0}.view{display:none}.view.active{display:block}.pag
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;background:#94a3b8}.on{background:var(--success)}.off{background:var(--danger)}
 button,select,input{border-radius:10px;padding:9px 12px;font:inherit}button{border:0;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:650;box-shadow:0 6px 16px rgba(37,99,235,.16)}button.secondary{background:#eef2f7;color:#334155;box-shadow:none;border:1px solid var(--line)}button.danger{background:#fee2e2;color:#b91c1c;box-shadow:none}button:disabled{opacity:.45;cursor:not-allowed}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.statusLine{padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#f8fafc;margin-bottom:10px}
+.deviceBar{position:sticky;top:0;z-index:500;display:flex;align-items:center;gap:12px;padding:10px 14px;margin:-20px -20px 16px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);box-shadow:0 5px 18px rgba(15,23,42,.08)}.deviceBar label{font-size:13px;font-weight:700}.deviceBar select{min-width:220px;max-width:min(420px,65vw);background:#fff;border:1px solid var(--line)}
 #map{height:390px;border-radius:13px;border:1px solid var(--line)}.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:10px 0}.mini{padding:11px;box-shadow:none}.mini b{display:block;margin-top:4px;font-size:14px}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8fafc;color:#475569}tr:last-child td{border-bottom:0}
 .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.shot{background:#fff;border:1px solid var(--line);border-radius:13px;padding:7px}.shot.selected{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.12)}.shot img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:9px;background:#0f172a;cursor:zoom-in}.shotActions{display:flex;gap:6px;margin-top:7px}.shotActions button,.shotActions a{flex:1;text-align:center;text-decoration:none;font-size:12px;padding:7px 6px;border-radius:8px}.shotActions a{background:#eef2ff;color:#3730a3}.progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#7c3aed)}.good{color:#15803d}.warn{color:#b45309}.bad{color:#b91c1c}
@@ -29,7 +30,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.9);z-index:999}.modal.open{display:flex}.modal img{max-width:92vw;max-height:90vh;border-radius:14px}.modal button{position:absolute;top:20px;right:20px}
 .toast{position:fixed;right:20px;bottom:20px;display:none;padding:11px 14px;background:#0f172a;color:#fff;border-radius:10px;z-index:1000}.toast.show{display:block}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.twoCol{grid-template-columns:1fr}.miniGrid{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){header{padding:0 14px}.shell{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);overflow:auto}.nav{flex-direction:row}.nav button{width:auto;white-space:nowrap}main{padding:14px}.cards{grid-template-columns:1fr 1fr}.settingRow{grid-template-columns:1fr}.shots{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){header{padding:0 14px}.shell{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);overflow:auto}.nav{flex-direction:row}.nav button{width:auto;white-space:nowrap}main{padding:14px}.deviceBar{margin:-14px -14px 14px;padding:9px 12px}.deviceBar select{min-width:150px;max-width:65vw}.cards{grid-template-columns:1fr 1fr}.settingRow{grid-template-columns:1fr}.shots{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -49,6 +50,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
   <button data-view="settingsView">⚙ Settings</button>
 </nav></aside>
 <main>
+  <div class="deviceBar"><label for="globalDeviceSelect">Viewing device</label><select id="globalDeviceSelect" aria-label="Select device"><option value="">Loading devices…</option></select><span id="globalDeviceStatus" class="muted"></span></div>
 <section id="overview" class="view active">
   <div class="pageHead"><div><h2>Overview</h2><div class="muted">Quick system status</div></div><button id="overviewRefresh" class="secondary">Refresh</button></div>
   <div class="cards">
@@ -294,6 +296,16 @@ async function loadSettings(){
   }catch{}
 }
 function deviceName(id){const d=devices.find(x=>x.device_id===id);return d?(d.model||d.device_name||id):id}
+function deviceLabel(d){
+  const name=d.model||d.device_name||d.device_id,same=devices.filter(x=>(x.model||x.device_name||x.device_id)===name);
+  return same.length>1?name+' · Device '+(same.indexOf(d)+1):name;
+}
+function renderGlobalDeviceSelect(){
+  const el=document.getElementById('globalDeviceSelect');
+  el.innerHTML=devices.length?devices.map(d=>'<option value="'+esc(d.device_id)+'">'+esc(deviceLabel(d))+'</option>').join(''):'<option value="">No devices connected</option>';
+  el.disabled=!devices.length;el.value=selected?.device_id||'';
+  document.getElementById('globalDeviceStatus').textContent=selected?(selected.online?'Online':'Offline')+' · '+fmt(selected.last_seen):'';
+}
 async function loadUpdate(){
   try{
     const [u,h]=await Promise.all([
@@ -369,9 +381,11 @@ async function loadDevices(){
     if(el.checked)overviewSelectedIds.add(el.dataset.id);else overviewSelectedIds.delete(el.dataset.id);
     renderOverviewDevices();
   });
+  renderGlobalDeviceSelect();
   renderAlerts();loadStorage();
   if(Date.now()-lastDailyDistanceLoad>60000){lastDailyDistanceLoad=Date.now();loadTodayDistance()}
-  if(selected){const fresh=devices.find(x=>x.device_id===selected.device_id);if(fresh){selected=fresh;renderSelected()}}
+  if(selected){const fresh=devices.find(x=>x.device_id===selected.device_id);if(fresh){selected=fresh;renderSelected()}else selected=null}
+  if(selected)renderGlobalDeviceSelect();
   else if(devices.length)await selectDevice(devices[0].device_id);
 }
 function renderAlerts(){
@@ -392,9 +406,9 @@ function renderOverviewDevices(){
   document.getElementById('overviewSelectionSummary').textContent=selectedRows.length+' of '+devices.length+' devices selected · '+selectedRows.filter(d=>d.online).length+' online · '+totalDistance.toFixed(2)+' km today';
   document.getElementById('overviewDevices').innerHTML=devices.length?devices.map(d=>{
     const id=d.device_id,l=d.last_location||{},name=d.model||d.device_name||id;
-    const coords=l.latitude!=null&&l.longitude!=null?Number(l.latitude).toFixed(5)+', '+Number(l.longitude).toFixed(5):'—';
+    const coords=l.latitude!=null&&l.longitude!=null&&Number.isFinite(Number(l.latitude))&&Number.isFinite(Number(l.longitude))?Number(l.latitude).toFixed(5)+', '+Number(l.longitude).toFixed(5):'—';
     const checked=overviewSelectedIds===null||overviewSelectedIds.has(id);
-    return '<tr><td><input class="overviewDeviceCheckbox" type="checkbox" data-id="'+esc(id)+'" '+(checked?'checked':'')+' aria-label="Select '+esc(name)+'"></td><td>'+esc(name)+'</td><td><span class="dot '+(d.online?'on':'off')+'"></span>'+(d.online?'Online':'Offline')+'</td><td>'+fmt(d.last_seen)+'</td><td>'+esc(d.battery??'—')+'%</td><td>'+esc(d.network||'—')+'</td><td>'+(d.gps_enabled===false?'Off':'On')+'</td><td>'+(d.screen_monitoring?'On':'Paused')+'</td><td>'+coords+'</td><td>'+(overviewDistanceById[id]??'—')+(overviewDistanceById[id]===undefined?'':' km')+'</td></tr>';
+    return '<tr><td><input class="overviewDeviceCheckbox" type="checkbox" data-id="'+esc(id)+'" '+(checked?'checked':'')+' aria-label="Select '+esc(name)+'"></td><td>'+esc(name)+'</td><td><span class="dot '+(d.online?'on':'off')+'"></span>'+(d.online?'Online':'Offline')+'</td><td>'+fmt(d.last_seen)+'</td><td>'+esc(d.battery??'—')+'%</td><td>'+esc(d.network||'—')+'</td><td>'+(d.gps_enabled==null?'—':d.gps_enabled?'On':'Off')+'</td><td>'+(d.screen_monitoring==null?'—':d.screen_monitoring?'On':'Paused')+'</td><td>'+coords+'</td><td>'+(overviewDistanceById[id]??'—')+(overviewDistanceById[id]===undefined?'':' km')+'</td></tr>';
   }).join(''):'<tr><td colspan="10" class="muted">No devices connected yet</td></tr>';
 }
 function comparisonIds(){return comparisonSelectedIds===null?devices.map(d=>d.device_id):devices.filter(d=>comparisonSelectedIds.has(d.device_id)).map(d=>d.device_id)}
@@ -426,13 +440,13 @@ async function renderComparison(){
     rows=rows.filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===selectedDate);
     const color=palette[index%palette.length],points=pointsOf(rows);
     if(points.length>1)L.polyline(points,{color,weight:4,opacity:.8}).addTo(comparisonLayer);
-    if(points.length){const last=rows[rows.length-1];L.circleMarker(points[points.length-1],{radius:7,color,fillColor:color,fillOpacity:.9}).bindTooltip(esc(d?.model||d?.device_name||id)).addTo(comparisonLayer)}
+    if(points.length)L.circleMarker(points[points.length-1],{radius:7,color,fillColor:color,fillOpacity:.9}).bindTooltip(esc(d?.model||d?.device_name||id)).addTo(comparisonLayer);
     return {d,rows,points,color};
   }));
   const allPoints=results.flatMap(x=>x.points);
   if(allPoints.length)map.fitBounds(L.latLngBounds(allPoints),{padding:[22,22],maxZoom:15});
   tbody.innerHTML=results.map(({d,rows,points,color})=>{
-    const id=d?.device_id||'',last=rows[rows.length-1],coords=last?Number(last.latitude).toFixed(5)+', '+Number(last.longitude).toFixed(5):'—';
+    const id=d?.device_id||'',validRows=rows.filter(x=>Number.isFinite(+x.latitude)&&Number.isFinite(+x.longitude)),last=validRows[validRows.length-1],coords=last?Number(last.latitude).toFixed(5)+', '+Number(last.longitude).toFixed(5):'—';
     return '<tr><td><span class="dot" style="background:'+color+'"></span>'+esc(d?.model||d?.device_name||id)+'</td><td>'+(d?.online?'Online':'Offline')+'</td><td>'+points.length+'</td><td>'+distanceKm(rows).toFixed(2)+' km</td><td>'+fmt(last?.recorded_at)+'</td><td>'+coords+'</td></tr>';
   }).join('');
 }
@@ -456,10 +470,13 @@ function renderSelected(){
 async function selectDevice(id){
   selected=devices.find(x=>x.device_id===id);if(!selected)return;
   comparisonVisible=false;comparisonLayer.clearLayers();
+  renderGlobalDeviceSelect();
   document.querySelectorAll('.device').forEach(el=>el.classList.toggle('selected',el.dataset.deviceId===id));
   renderSelected();
   historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
   await Promise.all([renderHistory(),loadScreenshots()]);
+  if(document.getElementById('liveView').classList.contains('active'))await loadLiveStatus();
+  if(document.getElementById('settingsView').classList.contains('active'))await loadSettings();
 }
 async function renderHistory(){
   if(!selected)return;
@@ -602,11 +619,12 @@ document.getElementById('cleanupNow').onclick=async()=>{const r=await api('/ariv
 document.getElementById('integrityNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-integrity',{method:'POST'});document.getElementById('storageIntegrity').textContent=r.ok?'OK':'Issues';document.getElementById('storageIntegrity').className=r.ok?'good':'bad';toast(r.ok?'Integrity OK':'Missing '+r.missing+' · Orphaned '+r.orphaned)};
 document.getElementById('backupNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-backup',{method:'POST'});toast('Metadata backup created · '+r.file)};
 document.getElementById('publishUpdate').onclick=publishUpdate;
+document.getElementById('globalDeviceSelect').onchange=e=>{if(e.target.value)selectDevice(e.target.value)};
 document.getElementById('overviewSelectAll').onclick=()=>{overviewSelectedIds=null;renderOverviewDevices()};
 document.getElementById('overviewSelectNone').onclick=()=>{overviewSelectedIds=new Set();renderOverviewDevices()};
 document.getElementById('compareOverviewSelection').onclick=()=>{
   const ids=overviewDevicesSelected().map(d=>d.device_id);if(!ids.length)return toast('Select at least one device');
-  comparisonSelectedIds=new Set(ids);renderComparisonPicker();showView('locationView');renderComparison();
+  comparisonSelectedIds=new Set(ids);renderComparisonPicker();showView('locationView');setTimeout(renderComparison,100);
 };
 document.getElementById('compareSelectAll').onclick=()=>{comparisonSelectedIds=null;renderComparisonPicker()};
 document.getElementById('compareSelectNone').onclick=()=>{comparisonSelectedIds=new Set();renderComparisonPicker()};
