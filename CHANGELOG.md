@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.8 - 2026-10-03
+
+- Ask once for Android's battery-optimization exemption after location permission so users can approve more reliable background monitoring; Android's foreground service, restart behavior and user-controlled screen-recording consent remain in place.
+
 ## 1.1.7 - 2026-10-03
 
 - Request Android location and screen-recording consent as soon as a newly installed app opens, even when automatic server enrollment is offline; retry enrollment when the app resumes. Flutter UI and signing identity remain unchanged.

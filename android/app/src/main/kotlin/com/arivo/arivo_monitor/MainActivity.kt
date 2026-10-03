@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -25,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private val channelName = "com.arivo.monitor/control"
     private val permissionRequest = 1001
     private val projectionRequest = 2001
+    private val batteryOptimizationRequest = 2002
     private val activationIo = Executors.newSingleThreadExecutor()
     private var activationPending = false
     private var permissionFlowPending = false
@@ -156,6 +159,31 @@ class MainActivity : FlutterActivity() {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), permissionRequest)
         } else {
             startMonitorService()
+            requestBatteryOptimizationOrCapture()
+        }
+    }
+
+    private fun requestBatteryOptimizationOrCapture() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            requestScreenCapture()
+            return
+        }
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val prefs = getSharedPreferences("arivo_local_setup", MODE_PRIVATE)
+        if (powerManager.isIgnoringBatteryOptimizations(packageName) ||
+            prefs.getBoolean("battery_optimization_prompted", false)) {
+            requestScreenCapture()
+            return
+        }
+        try {
+            startActivityForResult(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                },
+                batteryOptimizationRequest
+            )
+            prefs.edit().putBoolean("battery_optimization_prompted", true).apply()
+        } catch (_: Exception) {
             requestScreenCapture()
         }
     }
@@ -202,13 +230,17 @@ class MainActivity : FlutterActivity() {
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) return
             startMonitorService()
-            requestScreenCapture()
+            requestBatteryOptimizationOrCapture()
         }
     }
 
     @Deprecated("Deprecated in Android API, retained for MediaProjection compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == batteryOptimizationRequest) {
+            requestScreenCapture()
+            return
+        }
         if (requestCode == projectionRequest && resultCode == Activity.RESULT_OK && data != null) {
             val intent = Intent(this, ScreenCaptureService::class.java)
                 .putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
