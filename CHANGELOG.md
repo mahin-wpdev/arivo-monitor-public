@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7 - 2026-10-03
+
+- Request Android location and screen-recording consent as soon as a newly installed app opens, even when automatic server enrollment is offline; retry enrollment when the app resumes. Flutter UI and signing identity remain unchanged.
+
 ## 1.1.6 - 2026-10-02
 
 - Request screen-recording consent once after reboot and first unlock using BOOT_COMPLETED, instead of relying on a manifest USER_UNLOCKED broadcast that Android does not deliver to manifest receivers.

@@ -27,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private val projectionRequest = 2001
     private val activationIo = Executors.newSingleThreadExecutor()
     private var activationPending = false
+    private var permissionFlowPending = false
     private var projectionRequested = false
     private val foregroundHandler = Handler(Looper.getMainLooper())
     private val updatePoll = object : Runnable {
@@ -59,7 +60,12 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         AppConfig.initialize(applicationContext)
-        if (AppConfig.DEVICE_KEY.isBlank()) activate()
+        if (AppConfig.DEVICE_KEY.isBlank()) {
+            activate()
+            // Ask for device permissions locally even when the server cannot
+            // be reached yet. Enrollment and heartbeat can recover later.
+            ensurePermissionsAndStart()
+        }
         foregroundHandler.removeCallbacks(updatePoll)
         foregroundHandler.postDelayed(updatePoll, 700)
     }
@@ -133,6 +139,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun ensurePermissionsAndStart() {
+        if (permissionFlowPending) return
         val needed = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) {
@@ -145,6 +152,7 @@ class MainActivity : FlutterActivity() {
             needed += Manifest.permission.POST_NOTIFICATIONS
         }
         if (needed.isNotEmpty()) {
+            permissionFlowPending = true
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), permissionRequest)
         } else {
             startMonitorService()
@@ -188,6 +196,7 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == permissionRequest) {
+            permissionFlowPending = false
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
