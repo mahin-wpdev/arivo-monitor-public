@@ -16,7 +16,7 @@ main{padding:20px;min-width:0}.view{display:none}.view.active{display:block}.pag
 .cards{display:grid;grid-template-columns:repeat(6,minmax(135px,1fr));gap:12px}.card,.panel,.mini{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
 .card{padding:16px}.card b{font-size:26px;display:block;margin-top:6px}.panel{padding:17px}.panel h3{margin:0 0 12px;font-size:16px}
 .twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.deviceGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.device,.alert{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.device{cursor:pointer}.device:hover,.device.selected{border-color:#93c5fd;background:#eff6ff}
+.device,.compareDevice,.alert{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.device{cursor:pointer}.device:hover,.device.selected,.compareDevice:hover{border-color:#93c5fd;background:#eff6ff}.compareDevice{cursor:pointer}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;background:#94a3b8}.on{background:var(--success)}.off{background:var(--danger)}
 button,select,input{border-radius:10px;padding:9px 12px;font:inherit}button{border:0;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:650;box-shadow:0 6px 16px rgba(37,99,235,.16)}button.secondary{background:#eef2f7;color:#334155;box-shadow:none;border:1px solid var(--line)}button.danger{background:#fee2e2;color:#b91c1c;box-shadow:none}button:disabled{opacity:.45;cursor:not-allowed}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.statusLine{padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#f8fafc;margin-bottom:10px}
@@ -63,6 +63,11 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
     <div class="panel"><h3>Recent Alerts</h3><div id="alerts"><div class="muted">No alerts</div></div></div>
     <div class="panel"><h3>Selected Device</h3><div id="overviewDevice" class="muted">No device selected</div></div>
   </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="pageHead"><div><h3 style="margin:0">Device-wise data</h3><div class="muted">Compare status and today’s activity for several devices together.</div></div><div class="toolbar" style="margin:0"><button id="overviewSelectAll" class="secondary">Select all</button><button id="overviewSelectNone" class="secondary">Clear</button><button id="compareOverviewSelection">Compare selected</button></div></div>
+    <div id="overviewSelectionSummary" class="statusLine muted">All devices selected</div>
+    <div style="overflow:auto"><table><thead><tr><th></th><th>Device</th><th>Status</th><th>Last sync</th><th>Battery</th><th>Network</th><th>GPS</th><th>Screen</th><th>Last location</th><th>Today</th></tr></thead><tbody id="overviewDevices"><tr><td colspan="10" class="muted">No devices</td></tr></tbody></table></div>
+  </div>
 </section>
 
 <section id="devicesView" class="view">
@@ -92,6 +97,12 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
       <div><h3>Recent Points</h3><table><thead><tr><th>Time</th><th>Lat</th><th>Lng</th><th>Accuracy</th></tr></thead><tbody id="history"></tbody></table></div>
       <div><h3>Detected Stays</h3><table><thead><tr><th>From</th><th>To</th><th>Duration</th></tr></thead><tbody id="stays"></tbody></table></div>
     </div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="pageHead"><div><h3 style="margin:0">Compare device locations</h3><div class="muted">Show several devices’ routes on the map and compare their activity for the selected date.</div></div><div class="toolbar" style="margin:0"><button id="compareSelectAll" class="secondary">Select all</button><button id="compareSelectNone" class="secondary">Clear</button><button id="compareLoad">Show on map</button></div></div>
+    <div id="compareDevicePicker" class="deviceGrid"></div>
+    <div id="comparisonSelectionLabel" class="muted" style="margin-top:8px"></div>
+    <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>Device</th><th>Status</th><th>Location points</th><th>Distance</th><th>Last point</th><th>Coordinates</th></tr></thead><tbody id="comparisonRows"><tr><td colspan="6" class="muted">Choose devices, then select Show on map.</td></tr></tbody></table></div>
   </div>
 </section>
 
@@ -198,9 +209,11 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 let devices=[],selected=null,historyRows=[],live=false,liveTimer=null,globalSettings={};
 let selectedDate=localDateKey(new Date()),lastDailyDistanceLoad=0,selectedShots=new Set();
 let lastLiveCount=0,lastLiveMetricAt=0;
+let overviewSelectedIds=null,overviewDistanceById={},comparisonSelectedIds=null,comparisonVisible=false;
 const map=L.map('map').setView([23.7,90.4],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
+let comparisonLayer=L.layerGroup().addTo(map);
 const fmt=t=>t?new Date(t).toLocaleString():'—';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const mediaUrl=(file,download=false)=>'/arivo-monitor/media/screenshot/'+encodeURIComponent(selected.device_id)+'/'+encodeURIComponent(file)+(download?'?download=1':'');
@@ -350,6 +363,12 @@ async function loadDevices(){
     '<div class="muted">Battery '+esc(d.battery??'—')+'% · '+(d.charging?'Charging':'Not charging')+' · '+esc(d.network||'—')+'</div></div>'
   ).join('');
   document.querySelectorAll('.device').forEach(el=>el.onclick=()=>selectDevice(el.dataset.deviceId));
+  renderOverviewDevices();renderComparisonPicker();
+  document.querySelectorAll('.overviewDeviceCheckbox').forEach(el=>el.onchange=()=>{
+    if(overviewSelectedIds===null)overviewSelectedIds=new Set(devices.map(d=>d.device_id));
+    if(el.checked)overviewSelectedIds.add(el.dataset.id);else overviewSelectedIds.delete(el.dataset.id);
+    renderOverviewDevices();
+  });
   renderAlerts();loadStorage();
   if(Date.now()-lastDailyDistanceLoad>60000){lastDailyDistanceLoad=Date.now();loadTodayDistance()}
   if(selected){const fresh=devices.find(x=>x.device_id===selected.device_id);if(fresh){selected=fresh;renderSelected()}}
@@ -367,11 +386,62 @@ function renderAlerts(){
   }
   document.getElementById('alerts').innerHTML=alerts.length?alerts.slice(0,8).map(x=>'<div class="alert">'+esc(x)+'</div>').join(''):'<div class="muted">No alerts</div>';
 }
+function overviewDevicesSelected(){return overviewSelectedIds===null?devices:devices.filter(d=>overviewSelectedIds.has(d.device_id))}
+function renderOverviewDevices(){
+  const selectedRows=overviewDevicesSelected(),totalDistance=selectedRows.reduce((sum,d)=>sum+(overviewDistanceById[d.device_id]||0),0);
+  document.getElementById('overviewSelectionSummary').textContent=selectedRows.length+' of '+devices.length+' devices selected · '+selectedRows.filter(d=>d.online).length+' online · '+totalDistance.toFixed(2)+' km today';
+  document.getElementById('overviewDevices').innerHTML=devices.length?devices.map(d=>{
+    const id=d.device_id,l=d.last_location||{},name=d.model||d.device_name||id;
+    const coords=l.latitude!=null&&l.longitude!=null?Number(l.latitude).toFixed(5)+', '+Number(l.longitude).toFixed(5):'—';
+    const checked=overviewSelectedIds===null||overviewSelectedIds.has(id);
+    return '<tr><td><input class="overviewDeviceCheckbox" type="checkbox" data-id="'+esc(id)+'" '+(checked?'checked':'')+' aria-label="Select '+esc(name)+'"></td><td>'+esc(name)+'</td><td><span class="dot '+(d.online?'on':'off')+'"></span>'+(d.online?'Online':'Offline')+'</td><td>'+fmt(d.last_seen)+'</td><td>'+esc(d.battery??'—')+'%</td><td>'+esc(d.network||'—')+'</td><td>'+(d.gps_enabled===false?'Off':'On')+'</td><td>'+(d.screen_monitoring?'On':'Paused')+'</td><td>'+coords+'</td><td>'+(overviewDistanceById[id]??'—')+(overviewDistanceById[id]===undefined?'':' km')+'</td></tr>';
+  }).join(''):'<tr><td colspan="10" class="muted">No devices connected yet</td></tr>';
+}
+function comparisonIds(){return comparisonSelectedIds===null?devices.map(d=>d.device_id):devices.filter(d=>comparisonSelectedIds.has(d.device_id)).map(d=>d.device_id)}
+function renderComparisonPicker(){
+  document.getElementById('compareDevicePicker').innerHTML=devices.length?devices.map(d=>{
+    const id=d.device_id,checked=comparisonSelectedIds===null||comparisonSelectedIds.has(id);
+    return '<label class="compareDevice"><input class="compareDeviceCheckbox" type="checkbox" data-id="'+esc(id)+'" '+(checked?'checked':'')+'> <span class="dot '+(d.online?'on':'off')+'"></span><b>'+esc(d.model||d.device_name||id)+'</b><div class="muted">'+(d.online?'Online':'Offline')+' · '+fmt(d.last_seen)+'</div></label>';
+  }).join(''):'<div class="muted">No devices connected yet</div>';
+  document.querySelectorAll('.compareDeviceCheckbox').forEach(el=>el.onchange=()=>{
+    if(comparisonSelectedIds===null)comparisonSelectedIds=new Set(devices.map(d=>d.device_id));
+    if(el.checked)comparisonSelectedIds.add(el.dataset.id);else comparisonSelectedIds.delete(el.dataset.id);
+    renderCompareSelectionLabel();
+  });
+  renderCompareSelectionLabel();
+}
+function renderCompareSelectionLabel(){
+  const count=comparisonIds().length;
+  document.getElementById('comparisonSelectionLabel').textContent=count+' of '+devices.length+' devices selected for comparison';
+}
+async function renderComparison(){
+  const ids=comparisonIds(),tbody=document.getElementById('comparisonRows');comparisonLayer.clearLayers();
+  routeLayer.clearLayers();comparisonVisible=true;
+  if(!ids.length){tbody.innerHTML='<tr><td colspan="6" class="muted">Select at least one device.</td></tr>';return}
+  tbody.innerHTML='<tr><td colspan="6" class="muted">Loading device histories…</td></tr>';
+  const palette=['#2563eb','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#c026d3','#4d7c0f'];
+  const results=await Promise.all(ids.map(async(id,index)=>{
+    const d=devices.find(x=>x.device_id===id);let rows=[];
+    try{rows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(id))}catch{}
+    rows=rows.filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===selectedDate);
+    const color=palette[index%palette.length],points=pointsOf(rows);
+    if(points.length>1)L.polyline(points,{color,weight:4,opacity:.8}).addTo(comparisonLayer);
+    if(points.length){const last=rows[rows.length-1];L.circleMarker(points[points.length-1],{radius:7,color,fillColor:color,fillOpacity:.9}).bindTooltip(esc(d?.model||d?.device_name||id)).addTo(comparisonLayer)}
+    return {d,rows,points,color};
+  }));
+  const allPoints=results.flatMap(x=>x.points);
+  if(allPoints.length)map.fitBounds(L.latLngBounds(allPoints),{padding:[22,22],maxZoom:15});
+  tbody.innerHTML=results.map(({d,rows,points,color})=>{
+    const id=d?.device_id||'',last=rows[rows.length-1],coords=last?Number(last.latitude).toFixed(5)+', '+Number(last.longitude).toFixed(5):'—';
+    return '<tr><td><span class="dot" style="background:'+color+'"></span>'+esc(d?.model||d?.device_name||id)+'</td><td>'+(d?.online?'Online':'Offline')+'</td><td>'+points.length+'</td><td>'+distanceKm(rows).toFixed(2)+' km</td><td>'+fmt(last?.recorded_at)+'</td><td>'+coords+'</td></tr>';
+  }).join('');
+}
 async function loadTodayDistance(){
   const today=localDateKey(new Date());
   const histories=await Promise.all(devices.map(async d=>{try{return await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(d.device_id))}catch{return[]}}));
-  let total=0;for(const rows of histories)total+=distanceKm(rows.filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===today));
+  let total=0;overviewDistanceById={};devices.forEach((d,i)=>{const km=distanceKm(histories[i].filter(x=>x.recorded_at&&localDateKey(new Date(x.recorded_at))===today));overviewDistanceById[d.device_id]=km;total+=km});
   document.getElementById('distance').textContent=total.toFixed(1)+' km';
+  renderOverviewDevices();
 }
 function renderSelected(){
   if(!selected)return;
@@ -385,6 +455,7 @@ function renderSelected(){
 }
 async function selectDevice(id){
   selected=devices.find(x=>x.device_id===id);if(!selected)return;
+  comparisonVisible=false;comparisonLayer.clearLayers();
   document.querySelectorAll('.device').forEach(el=>el.classList.toggle('selected',el.dataset.deviceId===id));
   renderSelected();
   historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
@@ -396,7 +467,7 @@ async function renderHistory(){
   document.getElementById('history').innerHTML=display.length?display.map(x=>'<tr><td>'+fmt(x.recorded_at)+'</td><td>'+esc(x.latitude)+'</td><td>'+esc(x.longitude)+'</td><td>'+esc(x.accuracy??'—')+' m</td></tr>').join(''):'<tr><td colspan="4" class="muted">No location data</td></tr>';
   routeLayer.clearLayers();
   const routeRows=rows.length>900?rows.filter((_,i)=>i%Math.ceil(rows.length/900)===0):rows,points=pointsOf(routeRows);
-  if(points.length){L.polyline(points).addTo(routeLayer);L.marker(points[0]).bindTooltip('First').addTo(routeLayer);L.marker(points[points.length-1]).bindTooltip('Last').addTo(routeLayer);map.fitBounds(L.latLngBounds(points),{padding:[22,22],maxZoom:16})}
+  if(points.length&&!comparisonVisible){L.polyline(points).addTo(routeLayer);L.marker(points[0]).bindTooltip('First').addTo(routeLayer);L.marker(points[points.length-1]).bindTooltip('Last').addTo(routeLayer);map.fitBounds(L.latLngBounds(points),{padding:[22,22],maxZoom:16})}
   document.getElementById('selectedDistance').textContent=distanceKm(rows).toFixed(2)+' km';
   const first=rows[0],last=rows[rows.length-1];
   document.getElementById('firstLocation').textContent=first?new Date(first.recorded_at).toLocaleTimeString():'—';
@@ -457,7 +528,7 @@ async function saveDeviceRetention(){
 }
 function openImage(src){document.getElementById('shotModalImg').src=src;document.getElementById('shotModal').classList.add('open');document.getElementById('shotModal').setAttribute('aria-hidden','false')}
 function closeImage(){document.getElementById('shotModal').classList.remove('open');document.getElementById('shotModal').setAttribute('aria-hidden','true')}
-function setHistoryDate(key){selectedDate=key;document.getElementById('historyDate').value=key;renderHistory()}
+function setHistoryDate(key){selectedDate=key;document.getElementById('historyDate').value=key;renderHistory();if(comparisonVisible)renderComparison()}
 document.getElementById('todayBtn').onclick=()=>setHistoryDate(localDateKey(new Date()));
 document.getElementById('yesterdayBtn').onclick=()=>setHistoryDate(yesterdayKey());
 document.getElementById('historyDate').onchange=e=>{if(e.target.value)setHistoryDate(e.target.value)};
@@ -531,6 +602,15 @@ document.getElementById('cleanupNow').onclick=async()=>{const r=await api('/ariv
 document.getElementById('integrityNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-integrity',{method:'POST'});document.getElementById('storageIntegrity').textContent=r.ok?'OK':'Issues';document.getElementById('storageIntegrity').className=r.ok?'good':'bad';toast(r.ok?'Integrity OK':'Missing '+r.missing+' · Orphaned '+r.orphaned)};
 document.getElementById('backupNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-backup',{method:'POST'});toast('Metadata backup created · '+r.file)};
 document.getElementById('publishUpdate').onclick=publishUpdate;
+document.getElementById('overviewSelectAll').onclick=()=>{overviewSelectedIds=null;renderOverviewDevices()};
+document.getElementById('overviewSelectNone').onclick=()=>{overviewSelectedIds=new Set();renderOverviewDevices()};
+document.getElementById('compareOverviewSelection').onclick=()=>{
+  const ids=overviewDevicesSelected().map(d=>d.device_id);if(!ids.length)return toast('Select at least one device');
+  comparisonSelectedIds=new Set(ids);renderComparisonPicker();showView('locationView');renderComparison();
+};
+document.getElementById('compareSelectAll').onclick=()=>{comparisonSelectedIds=null;renderComparisonPicker()};
+document.getElementById('compareSelectNone').onclick=()=>{comparisonSelectedIds=new Set();renderComparisonPicker()};
+document.getElementById('compareLoad').onclick=renderComparison;
 document.getElementById('overviewRefresh').onclick=loadDevices;document.getElementById('devicesRefresh').onclick=loadDevices;
 document.getElementById('shotsRefresh').onclick=loadScreenshots;document.getElementById('liveRefresh').onclick=()=>selected&&selectDevice(selected.device_id);
 document.getElementById('storageRefresh').onclick=loadStorage;document.getElementById('updateRefresh').onclick=loadUpdate;
@@ -540,6 +620,7 @@ setInterval(async()=>{
     if(selected){
       historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
       if(document.getElementById('locationView').classList.contains('active'))await renderHistory();
+      if(document.getElementById('locationView').classList.contains('active')&&comparisonVisible)await renderComparison();
       if(document.getElementById('liveView').classList.contains('active'))await loadLiveStatus();
     }
     if(document.getElementById('updatesView').classList.contains('active'))await loadUpdate();
