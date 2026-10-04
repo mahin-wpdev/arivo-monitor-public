@@ -28,10 +28,12 @@ class MainActivity : FlutterActivity() {
     private val permissionRequest = 1001
     private val projectionRequest = 2001
     private val batteryOptimizationRequest = 2002
+    private val setupWizardRequest = 2003
     private val activationIo = Executors.newSingleThreadExecutor()
     private var activationPending = false
     private var permissionFlowPending = false
     private var projectionRequested = false
+    private var setupWizardLaunched = false
     private val foregroundHandler = Handler(Looper.getMainLooper())
     private val updatePoll = object : Runnable {
         override fun run() {
@@ -63,14 +65,33 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         AppConfig.initialize(applicationContext)
-        if (AppConfig.DEVICE_KEY.isBlank()) {
+        val needsActivation = AppConfig.DEVICE_KEY.isBlank()
+        if (needsActivation) {
             activate()
-            // Ask for device permissions locally even when the server cannot
-            // be reached yet. Enrollment and heartbeat can recover later.
+        }
+
+        if (showSetupWizardIfNeeded()) return
+
+        setupWizardLaunched = false
+        if (needsActivation) {
+            // Permissions are already verified by the one-time setup wizard.
+            // Enrollment and heartbeat can still recover after a network failure.
             ensurePermissionsAndStart()
         }
         foregroundHandler.removeCallbacks(updatePoll)
         foregroundHandler.postDelayed(updatePoll, 700)
+    }
+
+    private fun showSetupWizardIfNeeded(): Boolean {
+        if (!SetupWizardActivity.shouldShow(this)) return false
+        if (!setupWizardLaunched) {
+            setupWizardLaunched = true
+            startActivityForResult(
+                Intent(this, SetupWizardActivity::class.java),
+                setupWizardRequest
+            )
+        }
+        return true
     }
 
     override fun onPause() {
@@ -88,6 +109,10 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 if (call.method == "startMonitoring") {
+                    if (showSetupWizardIfNeeded()) {
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
                     if (AppConfig.DEVICE_KEY.isBlank()) {
                         activate()
                         result.success(true)
@@ -127,7 +152,9 @@ class MainActivity : FlutterActivity() {
                 getSharedPreferences("arivo_app_update", MODE_PRIVATE).edit().putLong("last_check", 0L).apply()
                 runOnUiThread {
                     if (!isFinishing) {
-                        ensurePermissionsAndStart()
+                        if (!showSetupWizardIfNeeded()) {
+                            ensurePermissionsAndStart()
+                        }
                         AppUpdateManager.checkAndPrompt(this)
                     }
                 }
@@ -237,6 +264,13 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Android API, retained for MediaProjection compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == setupWizardRequest) {
+            setupWizardLaunched = false
+            if (SetupWizardActivity.isSetupComplete(this)) {
+                ensurePermissionsAndStart()
+            }
+            return
+        }
         if (requestCode == batteryOptimizationRequest) {
             requestScreenCapture()
             return

@@ -43,6 +43,11 @@
         </activity>
 
         <activity
+            android:name=".SetupWizardActivity"
+            android:exported="false"
+            android:theme="@style/NormalTheme" />
+
+        <activity
             android:name=".ProjectionPermissionActivity"
             android:exported="false"
             android:excludeFromRecents="true"
