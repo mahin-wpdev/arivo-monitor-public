@@ -57,6 +57,7 @@ class MonitorService : Service(), LocationListener {
         )
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        MonitorDiagnostics.serviceStarted(this, diagnosticContext())
         startLocationUpdates()
         scheduler.scheduleAtFixedRate(
             { sendHeartbeat() },
@@ -181,12 +182,67 @@ class MonitorService : Service(), LocationListener {
 
         io.execute {
             withShortWakeLock("HeartbeatSync") {
-                if (isOnline()) {
-                    postJsonSync("/device/heartbeat", body)
+                val failure = if (isOnline()) postHeartbeatSync(body) else "network_unavailable"
+                if (failure == null) {
+                    val events = MonitorDiagnostics.pending(this@MonitorService)
+                    if (events != null) {
+                        val report = JSONObject().put("device_id", deviceId).put("events", events)
+                        if (postJsonSync("/device/diagnostics", report)) {
+                            MonitorDiagnostics.clear(this@MonitorService)
+                        }
+                    }
                     flushLocationQueue()
+                } else {
+                    MonitorDiagnostics.record(this@MonitorService, failure, diagnosticContext())
                 }
                 AppUpdateManager.backgroundCheck(applicationContext)
             }
+        }
+    }
+
+    private fun diagnosticContext(): JSONObject {
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return JSONObject()
+            .put("network", currentNetwork())
+            .put("battery_percent", if (level >= 0) ((level * 100f) / scale).toInt() else JSONObject.NULL)
+            .put("charging", status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL)
+            .put("battery_saver", power.isPowerSaveMode)
+            .put("interactive", power.isInteractive)
+            .put("gps_enabled", gpsEnabled())
+            .put("app_version", BuildConfig.VERSION_NAME)
+            .put("app_build", BuildConfig.VERSION_CODE)
+            .put("android_sdk", Build.VERSION.SDK_INT)
+    }
+
+    private fun postHeartbeatSync(body: JSONObject): String? {
+        return try {
+            val connection = URL(AppConfig.SERVER_BASE_URL + "/device/heartbeat")
+                .openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("X-Arivo-Key", AppConfig.DEVICE_KEY)
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            if (code in 200..299) connection.inputStream.use { it.readBytes() }
+            else connection.errorStream?.use { it.readBytes() }
+            connection.disconnect()
+            if (code in 200..299) null else "server_http_$code"
+        } catch (_: java.net.SocketTimeoutException) {
+            "request_timeout"
+        } catch (_: java.net.UnknownHostException) {
+            "dns_failure"
+        } catch (_: java.net.ConnectException) {
+            "connection_refused"
+        } catch (error: Exception) {
+            "request_error_${error.javaClass.simpleName.take(40)}"
         }
     }
 
@@ -297,6 +353,7 @@ class MonitorService : Service(), LocationListener {
         }
 
     override fun onDestroy() {
+        MonitorDiagnostics.serviceStopped(this)
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
         scheduler.shutdownNow()
         io.shutdownNow()

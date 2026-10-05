@@ -70,8 +70,12 @@ if ($LASTEXITCODE -eq 1) {
 } elseif ($LASTEXITCODE -ne 0) { throw 'Public snapshot status failed' }
 $tag = "v$version-build$build"
 $asset = "$apk#Arivo-$version-$build.apk"
+$savedErrorPreference = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
 gh release view $tag --repo $publicRepo *> $null
-if ($LASTEXITCODE -eq 0) {
+$releaseExists = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $savedErrorPreference
+if ($releaseExists) {
     gh release upload $tag $asset --repo $publicRepo --clobber
 } else {
     gh release create $tag $asset --repo $publicRepo --target master --title "Arivo $version+$build" --notes "$env:RELEASE_NOTES"

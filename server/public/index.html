@@ -121,7 +121,9 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
     <div class="toolbar">
       <input id="shotDate" type="date">
       <button id="shotClearDate" class="secondary">All Dates</button>
+      <label class="muted" for="shotPageSize">Per page</label><select id="shotPageSize"><option value="20" selected>20</option><option value="40">40</option><option value="60">60</option><option value="100">100</option></select>
       <button id="shotSelectAll" class="secondary">Select All</button>
+      <button id="shotLoadOlder" class="secondary" disabled>Load older screenshots</button>
       <button id="shotDownloadSelected" class="secondary">Download Selected</button>
       <button id="shotDeleteSelected" class="danger">Delete Selected</button>
       <select id="deviceRetention"><option value="">Use Global Retention</option><option value="1">1 day</option><option value="3">3 days</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="0">Never</option></select>
@@ -210,6 +212,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 <script>
 let devices=[],selected=null,historyRows=[],live=false,liveTimer=null,globalSettings={};
 let selectedDate=localDateKey(new Date()),lastDailyDistanceLoad=0,selectedShots=new Set();
+let screenshotOffset=0,screenshotLoading=false;
 let lastLiveCount=0,lastLiveMetricAt=0;
 let overviewSelectedIds=null,overviewDistanceById={},comparisonSelectedIds=null,comparisonVisible=false;
 const map=L.map('map').setView([23.7,90.4],7);
@@ -218,6 +221,15 @@ let routeLayer=L.layerGroup().addTo(map);
 let comparisonLayer=L.layerGroup().addTo(map);
 const fmt=t=>t?new Date(t).toLocaleString():'—';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const diagnosticSummary=e=>{
+  if(!e)return 'No report yet';
+  const c=e.context||{},parts=[String(e.reason||'unknown').replace(/_/g,' '),fmt(e.at)];
+  if(c.network)parts.push(c.network);
+  if(c.battery_percent!=null&&c.battery_percent>=0)parts.push('Battery '+c.battery_percent+'%');
+  if(c.battery_saver)parts.push('Battery saver on');
+  if(c.interactive===false)parts.push('Screen off');
+  return parts.join(' · ');
+};
 const mediaUrl=(file,download=false)=>'/arivo-monitor/media/screenshot/'+encodeURIComponent(selected.device_id)+'/'+encodeURIComponent(file)+(download?'?download=1':'');
 function localDateKey(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day}
 function yesterdayKey(){const d=new Date();d.setDate(d.getDate()-1);return localDateKey(d)}
@@ -372,9 +384,23 @@ async function loadDevices(){
     '<div class="device '+(selected&&selected.device_id===d.device_id?'selected':'')+'" data-device-id="'+esc(d.device_id)+'">'+
     '<div><span class="dot '+(d.online?'on':'off')+'"></span><b>'+esc(d.model||d.device_name||d.device_id)+'</b></div>'+
     '<div class="muted">'+esc(d.device_id)+' · '+(d.online?'Online':'Offline')+' · '+fmt(d.last_seen)+'</div>'+
-    '<div class="muted">Battery '+esc(d.battery??'—')+'% · '+(d.charging?'Charging':'Not charging')+' · '+esc(d.network||'—')+'</div></div>'
+    '<div class="muted">Last offline report: '+esc(diagnosticSummary(d.last_diagnostic_event))+'</div>'+
+    '<div class="muted">Battery '+esc(d.battery??'—')+'% · '+(d.charging?'Charging':'Not charging')+' · '+esc(d.network||'—')+'</div>'+
+    '<button class="danger removeDevice" data-device-id="'+esc(d.device_id)+'" style="margin-top:8px">Remove device</button></div>'
   ).join('');
   document.querySelectorAll('.device').forEach(el=>el.onclick=()=>selectDevice(el.dataset.deviceId));
+  document.querySelectorAll('.removeDevice').forEach(el=>el.onclick=async event=>{
+    event.stopPropagation();
+    const id=el.dataset.deviceId,device=devices.find(d=>d.device_id===id);
+    const name=device?.model||device?.device_name||id;
+    if(!confirm('Remove '+name+' from the dashboard? Its screenshots, location history and logs will be kept. The phone must be paired again to reconnect.'))return;
+    try{
+      await api('/arivo-monitor/admin/device-remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({device_id:id})});
+      if(selected?.device_id===id)selected=null;
+      toast('Device removed. History kept.');
+      await loadDevices();
+    }catch{toast('Could not remove device. Try again.')}
+  });
   renderOverviewDevices();renderComparisonPicker();
   document.querySelectorAll('.overviewDeviceCheckbox').forEach(el=>el.onchange=()=>{
     if(overviewSelectedIds===null)overviewSelectedIds=new Set(devices.map(d=>d.device_id));
@@ -461,9 +487,10 @@ function renderSelected(){
   if(!selected)return;
   const l=selected.last_location||{},name=selected.model||selected.device_name||selected.device_id;
   const status=(selected.online?'Online':'Offline')+' · Last sync '+fmt(selected.last_seen)+' · Battery '+(selected.battery??'—')+'% · '+(selected.network||'—')+' · GPS '+(selected.gps_enabled===false?'Off':'On')+' · Screen '+(selected.screen_monitoring?'On':'Paused');
+  const diagnosis='Last offline report: '+diagnosticSummary(selected.last_diagnostic_event);
   document.getElementById('deviceTitle').textContent=name;document.getElementById('status').textContent=status;document.getElementById('liveStatus').textContent=status;
   document.getElementById('shotsDevice').textContent=name+' · Last screenshot '+fmt(selected.last_screenshot);
-  document.getElementById('overviewDevice').innerHTML='<b>'+esc(name)+'</b><div class="muted" style="margin-top:7px">'+esc(status)+'</div>';
+  document.getElementById('overviewDevice').innerHTML='<b>'+esc(name)+'</b><div class="muted" style="margin-top:7px">'+esc(status)+'</div><div class="muted" style="margin-top:7px">'+esc(diagnosis)+'</div>';
   document.getElementById('liveBtn').disabled=!selected.screen_monitoring;
   document.getElementById('liveBtn').textContent=selected.screen_monitoring?(live?'Stop Live Screen':'Start Live Screen'):'Screen Permission Required';
 }
@@ -492,23 +519,43 @@ async function renderHistory(){
   const stays=detectStays(rows);document.getElementById('stayTime').textContent=Math.round(stays.reduce((s,x)=>s+x.mins,0))+' min';
   document.getElementById('stays').innerHTML=stays.length?stays.slice(-10).reverse().map(s=>'<tr><td>'+fmt(s.start.recorded_at)+'</td><td>'+fmt(s.end.recorded_at)+'</td><td>'+Math.round(s.mins)+' min</td></tr>').join(''):'<tr><td colspan="3" class="muted">No 5+ minute stays</td></tr>';
 }
-async function loadScreenshots(){
-  if(!selected)return;
-  selectedShots.clear();
+async function loadScreenshots({append=false}={}){
+  if(!selected||screenshotLoading)return;
+  screenshotLoading=true;
+  const deviceId=selected.device_id;
   const date=document.getElementById('shotDate').value;
-  const q='/arivo-monitor/admin/screenshots?device_id='+encodeURIComponent(selected.device_id)+'&limit=200'+(date?'&date='+encodeURIComponent(date):'');
-  const [rows,stats]=await Promise.all([
-    api(q),
-    api('/arivo-monitor/admin/screenshot-stats?device_id='+encodeURIComponent(selected.device_id))
-  ]);
-  document.getElementById('shotCount').textContent=stats.count||0;
-  document.getElementById('shotBytes').textContent=bytesText(stats.bytes||0);
-  document.getElementById('shotToday').textContent=stats.by_day?.[localDateKey(new Date())]||0;
-  document.getElementById('shotIntegrity').textContent=stats.missing?'Missing '+stats.missing:'OK';
-  document.getElementById('shotIntegrity').className=stats.missing?'bad':'good';
-  document.getElementById('shots').innerHTML=rows.length?rows.map(x=>
-    '<div class="shot" data-file="'+esc(x.file)+'"><label class="muted"><input class="shotCheck" type="checkbox" data-file="'+esc(x.file)+'"> Select</label><img loading="lazy" src="'+mediaUrl(x.file)+'"><div class="muted">'+fmt(x.captured_at)+' · '+bytesText(x.bytes||0)+'</div><div class="shotActions"><a href="'+mediaUrl(x.file,true)+'">Download</a><button class="danger deleteShot" data-file="'+esc(x.file)+'">Delete</button></div></div>'
-  ).join(''):'<div class="muted">No screenshots for this filter.</div>';
+  const button=document.getElementById('shotLoadOlder');
+  button.disabled=true;
+  if(!append){selectedShots.clear();screenshotOffset=0;document.getElementById('shots').innerHTML='';}
+  const pageSize=Math.max(1,Math.min(100,Number(document.getElementById('shotPageSize').value)||20));
+  const q='/arivo-monitor/admin/screenshots?device_id='+encodeURIComponent(deviceId)+'&limit='+pageSize+'&offset='+screenshotOffset+(date?'&date='+encodeURIComponent(date):'');
+  try{
+    const [rows,stats]=await Promise.all([
+      api(q),
+      append?Promise.resolve(null):api('/arivo-monitor/admin/screenshot-stats?device_id='+encodeURIComponent(deviceId))
+    ]);
+    if(!selected||selected.device_id!==deviceId)return;
+    if(stats){
+      document.getElementById('shotCount').textContent=stats.count||0;
+      document.getElementById('shotBytes').textContent=bytesText(stats.bytes||0);
+      document.getElementById('shotToday').textContent=stats.by_day?.[localDateKey(new Date())]||0;
+      document.getElementById('shotIntegrity').textContent=stats.missing?'Missing '+stats.missing:'OK';
+      document.getElementById('shotIntegrity').className=stats.missing?'bad':'good';
+    }
+    const html=rows.map(x=>
+      '<div class="shot" data-file="'+esc(x.file)+'"><label class="muted"><input class="shotCheck" type="checkbox" data-file="'+esc(x.file)+'"> Select</label><img loading="lazy" decoding="async" fetchpriority="low" width="180" height="320" src="'+mediaUrl(x.file)+'"><div class="muted">'+fmt(x.captured_at)+' · '+bytesText(x.bytes||0)+'</div><div class="shotActions"><a href="'+mediaUrl(x.file,true)+'">Download</a><button class="danger deleteShot" data-file="'+esc(x.file)+'">Delete</button></div></div>'
+    ).join('');
+    if(append)document.getElementById('shots').insertAdjacentHTML('beforeend',html);
+    else document.getElementById('shots').innerHTML=html||'<div class="muted">No screenshots for this filter.</div>';
+    screenshotOffset+=rows.length;
+    button.hidden=rows.length<pageSize;
+    button.textContent='Load older screenshots';
+  }catch{
+    toast('Could not load screenshots. Try again.');
+  }finally{
+    screenshotLoading=false;
+    button.disabled=button.hidden;
+  }
   document.querySelectorAll('#shots img').forEach(img=>img.onclick=()=>openImage(img.src));
   document.querySelectorAll('.deleteShot').forEach(btn=>btn.onclick=()=>deleteScreenshot(btn.dataset.file));
   document.querySelectorAll('.shotCheck').forEach(cb=>cb.onchange=()=>{
@@ -517,6 +564,7 @@ async function loadScreenshots(){
   });
   await loadSettings();
 }
+document.getElementById('shotLoadOlder').onclick=()=>loadScreenshots({append:true});
 async function deleteScreenshot(file){
   if(!selected||!confirm('Delete this screenshot permanently?'))return;
   await api('/arivo-monitor/admin/screenshot?device_id='+encodeURIComponent(selected.device_id)+'&file='+encodeURIComponent(file),{method:'DELETE'});
@@ -592,6 +640,7 @@ document.getElementById('liveFullscreen').onclick=()=>{
 };
 document.getElementById('shotClose').onclick=closeImage;document.getElementById('shotModal').onclick=e=>{if(e.target.id==='shotModal')closeImage()};
 document.getElementById('shotDate').onchange=loadScreenshots;
+document.getElementById('shotPageSize').onchange=loadScreenshots;
 document.getElementById('shotClearDate').onclick=()=>{document.getElementById('shotDate').value='';loadScreenshots()};
 document.getElementById('shotSelectAll').onclick=()=>{
   const boxes=[...document.querySelectorAll('.shotCheck')],all=boxes.length&&boxes.every(x=>x.checked);

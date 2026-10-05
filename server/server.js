@@ -18,7 +18,7 @@ const ADMIN_USER = ENV.ARIVO_ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = ENV.ARIVO_ADMIN_PASSWORD || '';
 const DATA = path.resolve(ROOT, ENV.DATA_DIR || './data');
 const PUBLIC = path.join(ROOT, 'public');
-for (const dir of ['locations', 'screenshots', 'live', 'updates', 'backups']) {
+for (const dir of ['locations', 'screenshots', 'live', 'updates', 'backups', 'diagnostics']) {
   fs.mkdirSync(path.join(DATA, dir), { recursive: true });
 }
 const devicesFile = path.join(DATA, 'devices.json');
@@ -262,7 +262,7 @@ async function deviceApi(req, res, url) {
   }
   const identity = deviceIdentity(req);
   if (!identity) return sendJson(res, 401, { error: 'unauthorized' });
-  const ownsDevice = id => identity.legacy || identity.id === id;
+  const ownsDevice = id => !enrollment.isRemoved(id) && (identity.legacy || identity.id === id);
 
   if (req.method === 'GET' && url.pathname === '/device/update') {
     const deviceId = safe(url.searchParams.get('device_id') || identity.id);
@@ -303,6 +303,39 @@ async function deviceApi(req, res, url) {
     return fs.createReadStream(updateFile).pipe(res);
   }
 
+  if (req.method === 'POST' && url.pathname === '/device/diagnostics') {
+    const data = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
+    const id = safe(data.device_id);
+    if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
+    const rawEvents = Array.isArray(data.events) ? data.events.slice(-20) : [];
+    const events = rawEvents.map(raw => {
+      const context = raw && raw.context && typeof raw.context === 'object' ? raw.context : {};
+      return {
+        at: typeof raw.at === 'string' && Number.isFinite(Date.parse(raw.at))
+          ? new Date(raw.at).toISOString() : now(),
+        received_at: now(),
+        reason: String(raw.reason || 'unknown').slice(0, 80),
+        context: {
+          network: String(context.network || '').slice(0, 40),
+          battery_percent: context.battery_percent != null && Number.isFinite(Number(context.battery_percent))
+            ? Math.max(-1, Math.min(100, Number(context.battery_percent))) : null,
+          charging: context.charging === true,
+          battery_saver: context.battery_saver === true,
+          interactive: context.interactive === true,
+          gps_enabled: context.gps_enabled === true,
+          app_version: String(context.app_version || '').slice(0, 40),
+          app_build: context.app_build != null && Number.isFinite(Number(context.app_build)) ? Number(context.app_build) : null,
+          android_sdk: context.android_sdk != null && Number.isFinite(Number(context.android_sdk)) ? Number(context.android_sdk) : null
+        }
+      };
+    });
+    const logFile = path.join(DATA, 'diagnostics', id + '.jsonl');
+    for (const event of events) appendJsonl(logFile, { device_id: id, ...event });
+    if (events.length) updateDevice(id, { last_diagnostic_event: events[events.length - 1] });
+    return sendJson(res, 200, { ok: true, stored: events.length });
+  }
+
   if (req.method === 'POST' && url.pathname === '/device/heartbeat') {
     const data = JSON.parse((await readBody(req, 1024 * 1024)).toString('utf8') || '{}');
     const id = safe(data.device_id);
@@ -326,6 +359,9 @@ async function deviceApi(req, res, url) {
     const id = safe(url.searchParams.get('device_id'));
     if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
     const kind = url.searchParams.get('kind') === 'live' ? 'live' : 'periodic';
+    const capturedAtMs = Number(url.searchParams.get('captured_at'));
+    const capturedAt = Number.isSafeInteger(capturedAtMs) && capturedAtMs > 0
+      ? new Date(capturedAtMs).toISOString() : now();
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
     const image = await readBody(req, 12 * 1024 * 1024);
     if (!image.length) return sendJson(res, 400, { error: 'empty_image' });
@@ -344,9 +380,9 @@ async function deviceApi(req, res, url) {
       const file = Date.now() + '.jpg';
       fs.writeFileSync(path.join(dir, file), image);
       appendJsonl(path.join(dir, 'index.jsonl'), {
-        file, captured_at: now(), bytes: image.length
+        file, captured_at: capturedAt, bytes: image.length
       });
-      updateDevice(id, { last_screenshot: now(), last_seen: now() });
+      updateDevice(id, { last_screenshot: capturedAt, last_seen: now() });
     }
     return sendJson(res, 200, { ok: true, kind });
   }
@@ -373,6 +409,24 @@ async function adminApi(req, res, url) {
       item.online = Boolean(item.last_seen && t - Date.parse(item.last_seen) < 120000);
     }
     return sendJson(res, 200, Object.values(all));
+  }
+  if (req.method === 'POST' && url.pathname === '/admin/device-remove') {
+    const data = JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}');
+    const id = safe(data.device_id);
+    if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    const all = readJson(devicesFile, {});
+    if (!all[id]) return sendJson(res, 404, { error: 'device_not_found' });
+    enrollment.removeDevice(id);
+    const commands = readJson(commandsFile, {});
+    delete commands[id];
+    writeJson(commandsFile, commands);
+    delete all[id];
+    writeJson(devicesFile, all);
+    appendJsonl(liveLogFile, { device_id: id, event: 'device_removed', at: now() });
+    const settings = getSettings();
+    delete settings.per_device_retention[id];
+    writeJson(settingsFile, settings);
+    return sendJson(res, 200, { ok: true, history_kept: true });
   }
   if (req.method === 'GET' && url.pathname === '/admin/storage') {
     const screenshotDir = path.join(DATA, 'screenshots');
@@ -512,7 +566,8 @@ async function adminApi(req, res, url) {
     const date = String(url.searchParams.get('date') || '').slice(0, 10);
     if (date) rows = rows.filter(x => String(x.captured_at || '').startsWith(date));
     const limit = Math.max(1, Math.min(500, Number(url.searchParams.get('limit') || 100)));
-    return sendJson(res, 200, rows.slice(0, limit));
+    const offset = Math.max(0, Math.min(100000, Math.floor(Number(url.searchParams.get('offset') || 0))));
+    return sendJson(res, 200, rows.slice(offset, offset + limit));
   }
   if (req.method === 'GET' && url.pathname === '/admin/screenshot-stats') {
     const id = safe(url.searchParams.get('device_id'));
@@ -622,6 +677,11 @@ function dashboard(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+    // Support both a root-mounted service and requests passed through the public
+    // /arivo-monitor/ prefix when the reverse proxy does not strip that prefix.
+    if (url.pathname === '/arivo-monitor' || url.pathname.startsWith('/arivo-monitor/')) {
+      url.pathname = url.pathname.slice('/arivo-monitor'.length) || '/';
+    }
     if (url.pathname.startsWith('/device/')) return await deviceApi(req, res, url);
     if (url.pathname.startsWith('/admin/')) return await adminApi(req, res, url);
     if (url.pathname.startsWith('/media/')) return media(req, res, url);

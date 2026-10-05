@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.10 - 2026-10-06
+
+- Keep a bounded offline diagnostic log on-device and report failure causes plus device state after connectivity returns; expose the latest report in the server dashboard. Notification permission denial does not prevent the monitor service from starting; Android's required foreground-service disclosure remains enabled.
+- Load dashboard screenshots in pages, with a selectable page size and 20 screenshots shown by default; allow device removal while keeping its screenshots, location history and logs.
+- Accept the public `/arivo-monitor/` URL prefix directly as well as reverse-proxy-stripped paths, so either proxy routing style reaches the dashboard and API.
+- Keep periodic screenshots in a bounded on-device queue while offline, retry uploads with backoff after reconnection, retain original capture times, and report capture/upload interruptions. Capture remains subject to Android's active screen-sharing consent and unlocked-screen rules.
+
+## 1.1.9 - 2026-10-04
+
+- Added one-time setup wizard for reliable background monitoring on Vivo/iQOO, including background location, battery optimization, Auto-start and background power setup. Also includes the pending 1.1.7/1.1.8 reliability improvements.
+
 ## 1.1.8 - 2026-10-03
 
 - Ask once for Android's battery-optimization exemption after location permission so users can approve more reliable background monitoring; Android's foreground service, restart behavior and user-controlled screen-recording consent remain in place.

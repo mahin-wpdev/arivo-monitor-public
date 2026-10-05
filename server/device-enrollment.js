@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 function createEnrollmentStore(directory, clock = Date.now) {
   const codesFile = path.join(directory, 'pairing-codes.json');
   const tokensFile = path.join(directory, 'device-tokens.json');
+  const removedFile = path.join(directory, 'removed-devices.json');
   const hash = value => crypto.createHash('sha256').update(value).digest('hex');
   const read = file => {
     if (!fs.existsSync(file)) return {};
@@ -59,7 +60,25 @@ function createEnrollmentStore(directory, clock = Date.now) {
       }
       tokens[hash(token)] = { device_id: deviceId, enrolled_at: new Date(clock()).toISOString() };
       write(tokensFile, tokens);
+      const removed = read(removedFile);
+      if (removed[deviceId]) {
+        delete removed[deviceId];
+        write(removedFile, removed);
+      }
       return token;
+    },
+    removeDevice(deviceId) {
+      const tokens = read(tokensFile);
+      for (const [key, record] of Object.entries(tokens)) {
+        if (record.device_id === deviceId) delete tokens[key];
+      }
+      write(tokensFile, tokens);
+      const removed = read(removedFile);
+      removed[deviceId] = { removed_at: new Date(clock()).toISOString() };
+      write(removedFile, removed);
+    },
+    isRemoved(deviceId) {
+      return Boolean(read(removedFile)[deviceId]);
     },
     authenticate(token) {
       if (!/^[a-f0-9]{64}$/.test(String(token || ''))) return null;
