@@ -47,7 +47,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         projectionRequested = savedInstanceState?.getBoolean("projection_requested", false) ?: false
-        recordPreviousUserStop()
+        recordPreviousProcessExits()
         recordPermissionAndBatteryChanges()
         handleActivationIntent(intent)
     }
@@ -87,23 +87,38 @@ class MainActivity : FlutterActivity() {
         prefs.edit().putString("last_permission_battery_state", state.toString()).apply()
     }
 
-    private fun recordPreviousUserStop() {
+    private fun recordPreviousProcessExits() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         val prefs = getSharedPreferences("arivo_diagnostics", Context.MODE_PRIVATE)
         val lastRecorded = prefs.getLong("last_process_exit_timestamp", 0L)
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val exit = try {
+        val exits = try {
             manager.getHistoricalProcessExitReasons(packageName, 0, 10)
-                .firstOrNull { it.timestamp > lastRecorded }
+                .filter { it.timestamp > lastRecorded }
+                .sortedBy { it.timestamp }
         } catch (_: Exception) {
-            null
-        } ?: return
+            emptyList()
+        }
+        if (exits.isEmpty()) return
 
         val notificationsAllowed = areAppNotificationsEnabled()
         val power = getSystemService(Context.POWER_SERVICE) as PowerManager
-        val (reason, certainty, label) = when (exit.reason) {
+        for (exit in exits) {
+            val (reason, certainty, label) = when (exit.reason) {
+            ApplicationExitInfo.REASON_UNKNOWN -> Triple(
+                "app_exit_reason_unknown", "os_reported_unknown", "Android could not determine why the process exited"
+            )
+            ApplicationExitInfo.REASON_EXIT_SELF -> Triple(
+                "app_exited_itself", "os_reported", "Android reports that the process exited itself"
+            )
+            ApplicationExitInfo.REASON_SIGNALED -> Triple(
+                "app_terminated_by_signal", "os_reported", "Android reports that the process was terminated by a signal"
+            )
             ApplicationExitInfo.REASON_USER_REQUESTED -> Triple(
                 "app_stopped_by_user", "os_reported", "Android reported a user-requested stop"
+            )
+            ApplicationExitInfo.REASON_USER_STOPPED -> Triple(
+                "app_user_profile_stopped", "os_reported", "Android reports that the Android user profile was stopped"
             )
             ApplicationExitInfo.REASON_LOW_MEMORY -> Triple(
                 "app_stopped_low_memory", "os_reported", "Android reported low memory"
@@ -132,28 +147,42 @@ class MainActivity : FlutterActivity() {
             ApplicationExitInfo.REASON_DEPENDENCY_DIED -> Triple(
                 "app_dependency_died", "os_reported", "Android reported that a dependency stopped"
             )
+            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> Triple(
+                "app_initialization_failure", "os_reported", "Android reported an app initialization failure"
+            )
+            ApplicationExitInfo.REASON_FREEZER -> Triple(
+                "app_frozen_by_system", "os_reported", "Android reported that the app process was frozen"
+            )
+            ApplicationExitInfo.REASON_OTHER -> Triple(
+                "app_process_exit_other", "os_reported_unspecified", "Android reported another process exit reason"
+            )
             else -> Triple(
                 "app_process_exit_other", "os_reported_unspecified", "Android reported process exit: ${exit.reason}"
             )
         }
-        MonitorDiagnostics.record(
-            this,
-            reason,
-            JSONObject()
-                .put("exit_timestamp", exit.timestamp)
-                .put("exit_reason_code", exit.reason)
-                .put("exit_reason_label", label)
-                .put("exit_description", exit.description ?: "")
-                .put("diagnostic_certainty", certainty)
-                .put("notification_permission", notificationsAllowed)
-                .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName))
-                .put("app_version", BuildConfig.VERSION_NAME)
-                .put("app_build", BuildConfig.VERSION_CODE)
-        )
-        if (exit.reason == ApplicationExitInfo.REASON_USER_REQUESTED) {
-            MonitorDiagnostics.serviceStopped(this)
+            MonitorDiagnostics.record(
+                this,
+                reason,
+                JSONObject()
+                    .put("exit_timestamp", exit.timestamp)
+                    .put("exit_reason_code", exit.reason)
+                    .put("exit_reason_label", label)
+                    .put("exit_description", exit.description ?: "")
+                    .put("exit_status", exit.status)
+                    .put("exit_importance", exit.importance)
+                    .put("exit_pss_kb", exit.pss)
+                    .put("exit_rss_kb", exit.rss)
+                    .put("diagnostic_certainty", certainty)
+                    .put("notification_permission", notificationsAllowed)
+                    .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName))
+                    .put("app_version", BuildConfig.VERSION_NAME)
+                    .put("app_build", BuildConfig.VERSION_CODE)
+            )
+            if (exit.reason == ApplicationExitInfo.REASON_USER_REQUESTED) {
+                MonitorDiagnostics.serviceStopped(this)
+            }
         }
-        prefs.edit().putLong("last_process_exit_timestamp", exit.timestamp).apply()
+        prefs.edit().putLong("last_process_exit_timestamp", exits.last().timestamp).apply()
     }
 
     private fun areAppNotificationsEnabled(): Boolean {

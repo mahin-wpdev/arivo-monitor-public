@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.12 - 2026-10-07
+
+- The app now shows update checking and download status, progress, failure details, retry, and install actions.
+
 ## 1.1.11 - 2026-10-07
 
 - Dashboard now reports Android process exit reasons, permission changes, and battery optimization setting changes. Monitoring can start when notifications are disabled.

@@ -18,7 +18,7 @@ const ADMIN_USER = ENV.ARIVO_ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = ENV.ARIVO_ADMIN_PASSWORD || '';
 const DATA = path.resolve(ROOT, ENV.DATA_DIR || './data');
 const PUBLIC = path.join(ROOT, 'public');
-for (const dir of ['locations', 'screenshots', 'live', 'updates', 'backups', 'diagnostics']) {
+for (const dir of ['locations', 'screenshots', 'live', 'updates', 'backups', 'diagnostics', 'device-logs']) {
   fs.mkdirSync(path.join(DATA, dir), { recursive: true });
 }
 const devicesFile = path.join(DATA, 'devices.json');
@@ -324,6 +324,10 @@ async function deviceApi(req, res, url) {
             ? Number(context.exit_reason_code) : null,
           exit_reason_label: String(context.exit_reason_label || '').slice(0, 160),
           exit_description: String(context.exit_description || '').slice(0, 300),
+          exit_status: context.exit_status != null && Number.isFinite(Number(context.exit_status)) ? Number(context.exit_status) : null,
+          exit_importance: context.exit_importance != null && Number.isFinite(Number(context.exit_importance)) ? Number(context.exit_importance) : null,
+          exit_pss_kb: context.exit_pss_kb != null && Number.isFinite(Number(context.exit_pss_kb)) ? Math.max(0, Number(context.exit_pss_kb)) : null,
+          exit_rss_kb: context.exit_rss_kb != null && Number.isFinite(Number(context.exit_rss_kb)) ? Math.max(0, Number(context.exit_rss_kb)) : null,
           diagnostic_certainty: String(context.diagnostic_certainty || '').slice(0, 40),
           notification_permission: typeof context.notification_permission === 'boolean'
             ? context.notification_permission : null,
@@ -356,7 +360,58 @@ async function deviceApi(req, res, url) {
     const id = safe(data.device_id);
     if (!id) return sendJson(res, 400, { error: 'device_id_required' });
     if (!ownsDevice(id)) return sendJson(res, 403, { error: 'wrong_device' });
-    updateDevice(id, { ...data, last_seen: now() });
+    const previous = readJson(devicesFile, {})[id] || {};
+    const seenAt = now();
+    const previousSeen = Date.parse(previous.last_seen || '');
+    if (Number.isFinite(previousSeen) && Date.parse(seenAt) - previousSeen > 120000) {
+      const stateAtLastHeartbeat = {};
+      const stateAfterReconnect = {};
+      for (const key of ['battery', 'network', 'gps_enabled', 'screen_monitoring', 'update_status']) {
+        if (previous[key] !== undefined) stateAtLastHeartbeat[key] = previous[key];
+        if (data[key] !== undefined) stateAfterReconnect[key] = data[key];
+      }
+      appendJsonl(path.join(DATA, 'device-logs', id + '.jsonl'), {
+        device_id: id,
+        source: 'connection',
+        event: 'heartbeat_gap',
+        at: seenAt,
+        offline_started_at: previous.last_seen,
+        reconnected_at: seenAt,
+        offline_duration_ms: Date.parse(seenAt) - previousSeen,
+        certainty: 'connection_gap_observed',
+        state_at_last_heartbeat: stateAtLastHeartbeat,
+        state_after_reconnect: stateAfterReconnect,
+        detail: 'The server observed a heartbeat gap. This does not prove the app was stopped; device power, internet access, Android scheduling, or the app process may explain it.'
+      });
+    }
+
+    const status = String(data.update_status || 'unknown').slice(0, 40);
+    const progress = Number.isFinite(Number(data.update_progress))
+      ? Math.max(0, Math.min(100, Number(data.update_progress))) : 0;
+    const latestBuild = Number.isFinite(Number(data.latest_build)) ? Number(data.latest_build) : 0;
+    const installedBuild = Number.isFinite(Number(data.app_build)) ? Number(data.app_build) : 0;
+    const oldProgress = Number(previous.update_progress || 0);
+    const updateStatusChanged = status !== String(previous.update_status || 'unknown');
+    const releaseChanged = latestBuild !== Number(previous.latest_build || 0);
+    const previousInstalledBuild = Number(previous.app_build || 0);
+    const installedChanged = previousInstalledBuild > 0 && installedBuild > previousInstalledBuild;
+    const progressAdvanced = status === 'downloading' &&
+      (progress >= 100 || progress - oldProgress >= 10);
+    if (updateStatusChanged || releaseChanged || installedChanged || progressAdvanced) {
+      const event = installedChanged ? 'installed' : status;
+      appendJsonl(path.join(DATA, 'device-logs', id + '.jsonl'), {
+        device_id: id,
+        source: 'update',
+        event,
+        at: seenAt,
+        app_version: String(data.app_version || '').slice(0, 40),
+        app_build: installedBuild,
+        latest_version: String(data.latest_version || '').slice(0, 40),
+        latest_build: latestBuild,
+        progress
+      });
+    }
+    updateDevice(id, { ...data, last_seen: seenAt });
     return sendJson(res, 200, { ok: true });
   }
 
@@ -424,6 +479,36 @@ async function adminApi(req, res, url) {
       item.online = Boolean(item.last_seen && t - Date.parse(item.last_seen) < 120000);
     }
     return sendJson(res, 200, Object.values(all));
+  }
+  if (req.method === 'GET' && url.pathname === '/admin/device-logs') {
+    const id = safe(url.searchParams.get('device_id'));
+    if (!id) return sendJson(res, 400, { error: 'device_id_required' });
+    const parseFilter = value => {
+      if (!value) return null;
+      const time = Date.parse(value);
+      return Number.isFinite(time) ? time : NaN;
+    };
+    const from = parseFilter(url.searchParams.get('from'));
+    const to = parseFilter(url.searchParams.get('to'));
+    if (Number.isNaN(from) || Number.isNaN(to)) return sendJson(res, 400, { error: 'invalid_datetime_filter' });
+
+    const updateEvents = jsonLines(path.join(DATA, 'device-logs', id + '.jsonl'), 100000);
+    const diagnosticEvents = jsonLines(path.join(DATA, 'diagnostics', id + '.jsonl'), 100000)
+      .map(event => ({ ...event, source: 'monitor', event: event.reason }));
+    const liveEvents = jsonLines(liveLogFile, 100000)
+      .filter(event => event.device_id === id)
+      .map(event => ({ ...event, source: 'live-screen' }));
+    let rows = [...updateEvents, ...diagnosticEvents, ...liveEvents]
+      .filter(event => {
+        const time = Date.parse(event.at || '');
+        return Number.isFinite(time) && (from == null || time >= from) && (to == null || time <= to);
+      })
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    const total = rows.length;
+    const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 20)));
+    const offset = Math.max(0, Math.min(1000000, Math.floor(Number(url.searchParams.get('offset') || 0))));
+    rows = rows.slice(offset, offset + limit);
+    return sendJson(res, 200, { device_id: id, total, limit, offset, items: rows });
   }
   if (req.method === 'POST' && url.pathname === '/admin/device-remove') {
     const data = JSON.parse((await readBody(req, 4096)).toString('utf8') || '{}');

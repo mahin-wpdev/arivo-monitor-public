@@ -20,6 +20,7 @@ main{padding:26px clamp(16px,3vw,40px) 44px;min-width:0;max-width:1760px;width:1
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:8px;background:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.13)}.on{background:var(--success);box-shadow:0 0 0 3px rgba(20,128,94,.12)}.off{background:var(--danger);box-shadow:0 0 0 3px rgba(194,65,75,.12)}
 button,select,input,textarea{border-radius:11px;padding:10px 12px;font:inherit}button{border:1px solid transparent;cursor:pointer;background:linear-gradient(135deg,#0b8790,#126b7a);color:#fff;font-weight:680;box-shadow:0 4px 11px rgba(8,127,140,.16);transition:filter .16s,transform .16s,box-shadow .16s}button:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 7px 15px rgba(8,127,140,.2)}button.secondary{background:#fff;color:#435369;box-shadow:none;border:1px solid #dce4ec}button.secondary:hover:not(:disabled){background:#f4f8fa;border-color:#b9cbd5;box-shadow:none}button.danger{background:#fff2f1;color:#ae3844;box-shadow:none;border:1px solid #f2d3d3}button.danger:hover:not(:disabled){background:#ffe6e4}button:disabled{opacity:.48;cursor:not-allowed;box-shadow:none}select,input,textarea{color:var(--text);background:#fff;border:1px solid #dce4ec;outline:none;transition:border-color .15s,box-shadow .15s}select:focus,input:focus,textarea:focus{border-color:#58aeb0;box-shadow:0 0 0 3px rgba(8,127,140,.12)}
 .toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:12px 0}.statusLine{padding:12px 15px;border:1px solid #e5ebef;border-radius:13px;background:#f7fafb;margin-bottom:12px}
+.detailActions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 18px}.logFilters{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:10px 0 14px}.logFilters label{display:grid;gap:4px;font-size:12px;color:var(--muted)}.logPagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.logPagination .pageActions{display:flex;gap:8px}
 .deviceBar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:12px;padding:12px 16px;margin:-26px calc(clamp(16px,3vw,40px)*-1) 22px;background:rgba(255,255,255,.9);border-bottom:1px solid rgba(222,230,238,.9);box-shadow:0 5px 16px rgba(28,45,70,.035);backdrop-filter:blur(14px)}.deviceBar label{font-size:12px;font-weight:750;letter-spacing:.25px;color:#4a5c6d;text-transform:uppercase}.deviceBar select{min-width:220px;max-width:min(420px,65vw);background:#fff}.deviceBar .muted{font-size:12px}
 #map{height:410px;border-radius:15px;border:1px solid var(--line);overflow:hidden}.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:13px 0}.mini{padding:13px 15px;box-shadow:none;background:#fbfdfd}.mini b{display:block;margin-top:5px;font-size:15px;line-height:1.35}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}th,td{padding:11px 12px;border-bottom:1px solid #edf0f4;text-align:left;white-space:nowrap}th{background:#f5f8fa;color:#526276;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.35px}tbody tr:hover{background:#f8fbfc}tr:last-child td{border-bottom:0}
@@ -30,7 +31,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(6,19,27,.92);z-index:999;backdrop-filter:blur(5px)}.modal.open{display:flex}.modal img{max-width:92vw;max-height:90vh;border-radius:15px;box-shadow:0 20px 60px #0008}.modal button{position:absolute;top:20px;right:20px}
 .toast{position:fixed;right:22px;bottom:22px;display:none;padding:12px 16px;background:#142c37;color:#fff;border-radius:12px;z-index:1000;box-shadow:0 10px 30px #102a3540}.toast.show{display:block}
 @media(max-width:1250px){.cards{grid-template-columns:repeat(3,minmax(130px,1fr))}.twoCol{grid-template-columns:1fr}.miniGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){header{height:66px;padding:0 15px}.shell{grid-template-columns:1fr;min-height:calc(100vh - 66px)}aside{padding:9px 10px;border-right:0;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:16;height:auto;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}.nav{flex-direction:row;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}.nav button{width:auto;white-space:nowrap;padding:9px 12px;font-size:12px}.nav button:hover{transform:none}.nav button.active{box-shadow:inset 0 -2px #0c8990}main{padding:18px 13px 30px}.deviceBar{top:51px;margin:-18px -13px 18px;padding:10px 13px;gap:8px}.deviceBar select{min-width:130px;max-width:55vw}.deviceBar label{font-size:10px}.deviceBar .muted{font-size:11px}.pageHead{align-items:flex-start}.pageHead h2{font-size:22px}.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{padding:14px;border-radius:15px}.card b{font-size:23px}.panel{padding:15px;border-radius:16px}.settingRow{grid-template-columns:1fr;gap:9px}.shots{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.shotPagination{align-items:stretch;flex-direction:column}.shotPagination .pageActions{display:grid;grid-template-columns:1fr 1fr}.shotPagination button{width:100%}#map{height:340px}.screenWrap{min-height:300px;padding:10px}.toolbar button{flex:0 0 auto}}
+@media(max-width:760px){header{height:66px;padding:0 15px}.shell{grid-template-columns:1fr;min-height:calc(100vh - 66px)}aside{padding:9px 10px;border-right:0;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:16;height:auto;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}.nav{flex-direction:row;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}.nav button{width:auto;white-space:nowrap;padding:9px 12px;font-size:12px}.nav button:hover{transform:none}.nav button.active{box-shadow:inset 0 -2px #0c8990}main{padding:18px 13px 30px}.deviceBar{top:51px;margin:-18px -13px 18px;padding:10px 13px;gap:8px}.deviceBar select{min-width:130px;max-width:55vw}.deviceBar label{font-size:10px}.deviceBar .muted{font-size:11px}.pageHead{align-items:flex-start}.pageHead h2{font-size:22px}.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{padding:14px;border-radius:15px}.card b{font-size:23px}.panel{padding:15px;border-radius:16px}.settingRow{grid-template-columns:1fr;gap:9px}.shots{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.shotPagination{align-items:stretch;flex-direction:column}.shotPagination .pageActions{display:grid;grid-template-columns:1fr 1fr}.shotPagination button{width:100%}.logPagination{align-items:stretch;flex-direction:column}.logPagination .pageActions{display:grid;grid-template-columns:1fr 1fr}#map{height:340px}.screenWrap{min-height:300px;padding:10px}.toolbar button{flex:0 0 auto}}
 @media(max-width:390px){.brand small{display:none}.deviceBar{flex-wrap:wrap}.deviceBar select{flex:1;min-width:0;max-width:none}.shots{gap:7px}.shot{padding:6px}.shotActions{gap:5px}.shotActions button,.shotActions a{font-size:11px}}
 </style>
 </head>
@@ -75,6 +76,33 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 
 <section id="devicesView" class="view">
   <div class="pageHead"><div><h2>Devices</h2><div class="muted">Select a device to monitor</div></div><button id="devicesRefresh" class="secondary">Refresh</button></div>
+  <div id="deviceDetails" class="panel" style="display:none">
+    <div class="pageHead"><div><h3 id="deviceDetailName" style="margin:0">Device</h3><div id="deviceDetailId" class="muted"></div></div><span id="deviceDetailOnline" class="statusLine">—</span></div>
+    <div class="miniGrid">
+      <div class="mini"><span class="muted">Last Seen</span><b id="deviceDetailLastSeen">—</b></div>
+      <div class="mini"><span class="muted">Battery / Network</span><b id="deviceDetailBattery">—</b></div>
+      <div class="mini"><span class="muted">Installed App</span><b id="deviceDetailApp">—</b></div>
+      <div class="mini"><span class="muted">Update Status</span><b id="deviceDetailUpdate">—</b></div>
+    </div>
+    <div id="deviceDetailReason" class="statusLine muted">Last monitoring event: —</div>
+    <div class="detailActions">
+      <button data-device-action="locationView">Location &amp; History</button>
+      <button data-device-action="shotsView">Screenshots</button>
+      <button data-device-action="liveView">Live Screen</button>
+      <button data-device-action="updatesView" class="secondary">App Updates</button>
+    </div>
+    <div class="panel" style="padding:16px;margin:0;box-shadow:none">
+      <div class="pageHead"><div><h3 style="margin:0">Device Activity Log</h3><div class="muted">Android exit reports, connection gaps, app updates and live screen events. A connection gap means sync stopped; it cannot confirm why. Nearby device states are clues, not proof.</div></div><button id="deviceLogRefresh" class="secondary">Refresh log</button></div>
+      <div class="logFilters">
+        <label>From date / time<input id="deviceLogFrom" type="datetime-local"></label>
+        <label>To date / time<input id="deviceLogTo" type="datetime-local"></label>
+        <button id="deviceLogFilter" class="secondary">Apply filter</button>
+        <button id="deviceLogClear" class="secondary">Clear</button>
+      </div>
+      <div style="overflow:auto"><table><thead><tr><th>Date / Time</th><th>Type</th><th>Event</th><th>Details</th></tr></thead><tbody id="deviceLogRows"><tr><td colspan="4" class="muted">Select a device to load its log.</td></tr></tbody></table></div>
+      <div class="logPagination"><span id="deviceLogPageInfo" class="muted">Page 1</span><div class="pageActions"><button id="deviceLogPrevious" class="secondary" disabled>← Previous</button><button id="deviceLogNext" class="secondary" disabled>Next →</button></div></div>
+    </div>
+  </div>
   <div class="panel" style="margin-bottom:14px"><h3>Connect a phone</h3><p class="muted">Install Arivo 1.1.4 or later, open the app and allow Android permissions. New installations connect automatically and appear online after their first heartbeat. Older versions can use a connection link on the phone; each link expires in 10 minutes.</p><button id="pairPhone">Create connection link</button><p id="pairingCode" aria-live="polite"></p></div>
   <div id="devices" class="deviceGrid"></div>
 </section>
@@ -214,7 +242,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
 <div id="toast" class="toast"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let devices=[],selected=null,historyRows=[],live=false,liveTimer=null,globalSettings={};
+let devices=[],selected=null,historyRows=[],live=false,liveTimer=null,globalSettings={},deviceLogOffset=0,deviceLogLimit=20,deviceLogTotal=0;
 let selectedDate=localDateKey(new Date()),lastDailyDistanceLoad=0,selectedShots=new Set();
 let screenshotOffset=0,screenshotLoading=false;
 let lastLiveCount=0,lastLiveMetricAt=0;
@@ -239,6 +267,14 @@ const diagnosticReason=e=>{
     app_package_state_change_exit:'Android reports a package state change',
     app_package_updated_exit:'Android reports an app update',
     app_dependency_died:'Android reports a dependency stopped',
+    app_exit_reason_unknown:'Android could not determine the exit reason',
+    app_exited_itself:'Android reports the process exited itself',
+    app_terminated_by_signal:'Android reports process termination by signal',
+    app_user_profile_stopped:'Android reports the Android user profile was stopped',
+    app_initialization_failure:'Android reports app initialization failure',
+    app_frozen_by_system:'Android reports the app process was frozen',
+    app_memory_limiter:'Android reports the memory limiter stopped the app',
+    app_system_anomaly:'Android reports a system-detected app anomaly',
     app_process_exit_other:'Android reports a process exit with no specific reason'
   };
   return labels[e?.reason]||String(e?.reason||'unknown').replace(/_/g,' ');
@@ -246,18 +282,24 @@ const diagnosticReason=e=>{
 const diagnosticSummary=e=>{
   if(!e)return 'No report yet';
   const c=e.context||{},parts=[diagnosticReason(e),fmt(c.exit_timestamp||e.at)];
-  if(e.reason==='app_stopped_by_user')parts.push('Android does not identify which person or exact stop action');
+  if(c.diagnostic_certainty==='os_reported')parts.push('Confirmed by Android exit record');
+  if(e.reason==='app_stopped_by_user')parts.push('Android does not identify who stopped it or distinguish Force stop from other user-requested stops');
   if(c.diagnostic_certainty==='os_reported_unspecified'&&c.exit_description)parts.push(String(c.exit_description).slice(0,140));
+  if(c.exit_reason_code!=null)parts.push('Android reason code '+c.exit_reason_code);
+  if(c.exit_status!=null)parts.push((e.reason==='app_terminated_by_signal'?'Termination signal ':'Android exit status field ')+c.exit_status);
+  if(c.exit_pss_kb>0||c.exit_rss_kb>0)parts.push('Last sampled memory: PSS '+Math.round((c.exit_pss_kb||0)/1024)+' MB, RSS '+Math.round((c.exit_rss_kb||0)/1024)+' MB (may be an earlier sample)');
   const removed=c.permissions_removed||{};
   const permissionNames={fine_location:'location',coarse_location:'approximate location',background_location:'background location',notifications:'notifications'};
   const changed=Object.keys(removed).filter(k=>removed[k]).map(k=>permissionNames[k]||k);
   if(changed.length)parts.push('Turned off: '+changed.join(', '));
-  if(c.notification_permission===false)parts.push('app notifications disabled');
-  if(c.battery_optimization_exempt===false)parts.push('battery optimization exemption off at next launch');
-  if(c.network)parts.push(c.network);
-  if(c.battery_percent!=null&&c.battery_percent>=0)parts.push('Battery '+c.battery_percent+'%');
-  if(c.battery_saver)parts.push('Battery saver on');
-  if(c.interactive===false)parts.push('Screen off');
+  const clues=[];
+  if(c.notification_permission===false)clues.push('notifications disabled');
+  if(c.battery_optimization_exempt===false)clues.push('battery optimization exemption off');
+  if(c.network)clues.push('network: '+c.network);
+  if(c.battery_percent!=null&&c.battery_percent>=0)clues.push('battery '+c.battery_percent+'%');
+  if(c.battery_saver)clues.push('battery saver on');
+  if(c.interactive===false)clues.push('screen off');
+  if(clues.length)parts.push('Context observed at next app start (clues only, not proof of cause): '+clues.join(', '));
   return parts.join(' · ');
 };
 const mediaUrl=(file,download=false)=>'/arivo-monitor/media/screenshot/'+encodeURIComponent(selected.device_id)+'/'+encodeURIComponent(file)+(download?'?download=1':'');
@@ -296,6 +338,7 @@ function showView(id){
   if(id==='storageView')loadStorage();
   if(id==='updatesView')loadUpdate();
   if(id==='settingsView')loadSettings();
+  if(id==='devicesView'&&selected)loadDeviceLogs();
 }
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 
@@ -443,6 +486,7 @@ async function loadDevices(){
   if(selected){const fresh=devices.find(x=>x.device_id===selected.device_id);if(fresh){selected=fresh;renderSelected()}else selected=null}
   if(selected)renderGlobalDeviceSelect();
   else if(devices.length)await selectDevice(devices[0].device_id);
+  if(selected&&document.getElementById('devicesView').classList.contains('active'))loadDeviceLogs();
 }
 function renderAlerts(){
   const alerts=[];
@@ -514,6 +558,84 @@ async function loadTodayDistance(){
   document.getElementById('distance').textContent=total.toFixed(1)+' km';
   renderOverviewDevices();
 }
+function renderDeviceDetails(){
+  const panel=document.getElementById('deviceDetails');
+  if(!panel)return;
+  if(!selected){panel.style.display='none';return}
+  panel.style.display='block';
+  const name=selected.model||selected.device_name||selected.device_id;
+  const appVersion=selected.app_version?'v'+selected.app_version+' ('+(selected.app_build??'—')+')':'—';
+  const latest=selected.latest_version?'v'+selected.latest_version+' ('+(selected.latest_build??'—')+')':'No update reported';
+  const updateStatus=String(selected.update_status||'unknown').replace(/_/g,' ');
+  const progress=Number(selected.update_progress||0);
+  document.getElementById('deviceDetailName').textContent=name;
+  document.getElementById('deviceDetailId').textContent='Device ID · '+selected.device_id;
+  const online=document.getElementById('deviceDetailOnline');
+  online.textContent=selected.online?'Online':'Offline';online.className='statusLine '+(selected.online?'good':'bad');
+  document.getElementById('deviceDetailLastSeen').textContent=fmt(selected.last_seen);
+  document.getElementById('deviceDetailBattery').textContent=(selected.battery??'—')+'% · '+(selected.network||'—');
+  document.getElementById('deviceDetailApp').textContent=appVersion;
+  document.getElementById('deviceDetailUpdate').textContent=updateStatus+(updateStatus==='downloading'?' · '+progress+'%':'');
+  document.getElementById('deviceDetailReason').textContent='Last monitoring event: '+diagnosticSummary(selected.last_diagnostic_event);
+}
+function deviceLogDescription(row){
+  if(row.source==='connection'){
+    const duration=Math.max(0,Number(row.offline_duration_ms||0));
+    const elapsed=duration<3600000?Math.round(duration/60000)+' min':Math.floor(duration/3600000)+' hr '+Math.round((duration%3600000)/60000)+' min';
+    const before=row.state_at_last_heartbeat||{},after=row.state_after_reconnect||{};
+    const state=[];
+    if(before.battery!=null)state.push('Battery before gap '+before.battery+'%');
+    if(before.network)state.push('Network before gap '+before.network);
+    if(after.battery!=null)state.push('Battery after reconnect '+after.battery+'%');
+    if(after.network)state.push('Network after reconnect '+after.network);
+    if(before.gps_enabled===false||after.gps_enabled===false)state.push('GPS reported off');
+    return 'Heartbeat missing for about '+elapsed+' (from '+fmt(row.offline_started_at)+' to '+fmt(row.reconnected_at)+'). '+
+      'Cause is unknown: phone power, internet, Android scheduling or app process may be involved. This gap alone cannot confirm the app was stopped.'+
+      (state.length?' Last available device context: '+state.join('; ')+'.':'')+
+      ' '+String(row.detail||'');
+  }
+  if(row.source==='update'){
+    const version=row.latest_version?'v'+row.latest_version+' ('+row.latest_build+')':'—';
+    return 'Installed '+(row.app_version||'—')+' ('+(row.app_build??'—')+') · Latest '+version+
+      (row.event==='downloading'?' · '+Number(row.progress||0)+'% downloaded':'');
+  }
+  if(row.source==='monitor')return diagnosticSummary({reason:row.reason||row.event,at:row.at,context:row.context});
+  if(row.source==='live-screen')return 'Live screen '+String(row.event||'').replace(/_/g,' ');
+  return String(row.detail||'');
+}
+function deviceLogEventName(row){
+  if(row.source==='connection')return 'Heartbeat gap';
+  if(row.source==='update')return row.event==='installed'?'App updated':'Update '+String(row.event||'status').replace(/_/g,' ');
+  if(row.source==='monitor')return diagnosticReason({reason:row.reason||row.event});
+  if(row.source==='live-screen')return 'Live screen '+String(row.event||'').replace(/_/g,' ');
+  return String(row.event||'Activity').replace(/_/g,' ');
+}
+function deviceLogSourceName(row){
+  return ({connection:'Connection observation',monitor:'Android/app diagnostic',update:'App update', 'live-screen':'Live screen'})[row.source]||String(row.source||'Device');
+}
+async function loadDeviceLogs(reset=false){
+  if(!selected)return;
+  if(reset)deviceLogOffset=0;
+  const id=selected.device_id,body=document.getElementById('deviceLogRows');
+  body.innerHTML='<tr><td colspan="4" class="muted">Loading device log…</td></tr>';
+  const query=new URLSearchParams({device_id:id,limit:String(deviceLogLimit),offset:String(deviceLogOffset)});
+  const from=document.getElementById('deviceLogFrom').value,to=document.getElementById('deviceLogTo').value;
+  if(from)query.set('from',new Date(from).toISOString());
+  if(to)query.set('to',new Date(to).toISOString());
+  try{
+    const result=await api('/arivo-monitor/admin/device-logs?'+query.toString());
+    if(!selected||selected.device_id!==id)return;
+    deviceLogTotal=Number(result.total||0);
+    body.innerHTML=result.items.length?result.items.map(row=>'<tr><td>'+fmt(row.at)+'</td><td>'+esc(deviceLogSourceName(row))+'</td><td>'+esc(deviceLogEventName(row))+'</td><td>'+esc(deviceLogDescription(row))+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">No device events for this date and time range.</td></tr>';
+    const first=deviceLogTotal?deviceLogOffset+1:0,last=Math.min(deviceLogOffset+result.items.length,deviceLogTotal);
+    document.getElementById('deviceLogPageInfo').textContent=first+'–'+last+' of '+deviceLogTotal;
+    document.getElementById('deviceLogPrevious').disabled=deviceLogOffset<=0;
+    document.getElementById('deviceLogNext').disabled=deviceLogOffset+result.items.length>=deviceLogTotal;
+  }catch{
+    body.innerHTML='<tr><td colspan="4" class="muted">Could not load device log.</td></tr>';
+    document.getElementById('deviceLogPageInfo').textContent='Log unavailable';
+  }
+}
 function renderSelected(){
   if(!selected)return;
   const l=selected.last_location||{},name=selected.model||selected.device_name||selected.device_id;
@@ -524,13 +646,17 @@ function renderSelected(){
   document.getElementById('overviewDevice').innerHTML='<b>'+esc(name)+'</b><div class="muted" style="margin-top:7px">'+esc(status)+'</div><div class="muted" style="margin-top:7px">'+esc(diagnosis)+'</div>';
   document.getElementById('liveBtn').disabled=!selected.screen_monitoring;
   document.getElementById('liveBtn').textContent=selected.screen_monitoring?(live?'Stop Live Screen':'Start Live Screen'):'Screen Permission Required';
+  renderDeviceDetails();
 }
 async function selectDevice(id){
   selected=devices.find(x=>x.device_id===id);if(!selected)return;
   comparisonVisible=false;comparisonLayer.clearLayers();
   renderGlobalDeviceSelect();
   document.querySelectorAll('.device').forEach(el=>el.classList.toggle('selected',el.dataset.deviceId===id));
+  deviceLogOffset=0;
   renderSelected();
+  await loadDeviceLogs();
+  if(document.getElementById('devicesView').classList.contains('active'))document.getElementById('deviceDetails').scrollIntoView({behavior:'smooth',block:'start'});
   historyRows=await api('/arivo-monitor/admin/history?device_id='+encodeURIComponent(selected.device_id));
   await Promise.all([renderHistory(),loadScreenshots()]);
   if(document.getElementById('liveView').classList.contains('active'))await loadLiveStatus();
@@ -707,6 +833,12 @@ document.getElementById('integrityNow').onclick=async()=>{const r=await api('/ar
 document.getElementById('backupNow').onclick=async()=>{const r=await api('/arivo-monitor/admin/storage-backup',{method:'POST'});toast('Metadata backup created · '+r.file)};
 document.getElementById('publishUpdate').onclick=publishUpdate;
 document.getElementById('globalDeviceSelect').onchange=e=>{if(e.target.value)selectDevice(e.target.value)};
+document.querySelectorAll('[data-device-action]').forEach(button=>button.onclick=()=>showView(button.dataset.deviceAction));
+document.getElementById('deviceLogRefresh').onclick=()=>loadDeviceLogs();
+document.getElementById('deviceLogFilter').onclick=()=>loadDeviceLogs(true);
+document.getElementById('deviceLogClear').onclick=()=>{document.getElementById('deviceLogFrom').value='';document.getElementById('deviceLogTo').value='';loadDeviceLogs(true)};
+document.getElementById('deviceLogPrevious').onclick=()=>{deviceLogOffset=Math.max(0,deviceLogOffset-deviceLogLimit);loadDeviceLogs()};
+document.getElementById('deviceLogNext').onclick=()=>{if(deviceLogOffset+deviceLogLimit<deviceLogTotal){deviceLogOffset+=deviceLogLimit;loadDeviceLogs()}};
 document.getElementById('overviewSelectAll').onclick=()=>{overviewSelectedIds=null;renderOverviewDevices()};
 document.getElementById('overviewSelectNone').onclick=()=>{overviewSelectedIds=new Set();renderOverviewDevices()};
 document.getElementById('compareOverviewSelection').onclick=()=>{
