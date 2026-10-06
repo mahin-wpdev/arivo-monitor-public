@@ -6,31 +6,32 @@
 <title>Arivo Monitor</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{--bg:#f4f7fb;--surface:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#2563eb;--brand2:#7c3aed;--success:#16a34a;--danger:#dc2626;--shadow:0 14px 40px rgba(15,23,42,.08)}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
-header{height:72px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;color:#fff;background:linear-gradient(110deg,#0f172a,#172554);box-shadow:0 8px 26px rgba(15,23,42,.18)}
-.brand{display:flex;align-items:center;gap:11px}.mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#60a5fa,#8b5cf6)}.brand b{display:block}.brand small{color:#cbd5e1}
-.shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 72px)}aside{padding:18px 12px;background:#fff;border-right:1px solid var(--line)}
-.nav{display:flex;flex-direction:column;gap:6px}.nav button{width:100%;text-align:left;background:transparent;color:#475569;box-shadow:none;padding:11px 13px}.nav button.active{background:#eff6ff;color:#1d4ed8}
-main{padding:20px;min-width:0}.view{display:none}.view.active{display:block}.pageHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.pageHead h2{margin:0;font-size:22px}.muted{color:var(--muted);font-size:13px}
-.cards{display:grid;grid-template-columns:repeat(6,minmax(135px,1fr));gap:12px}.card,.panel,.mini{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
-.card{padding:16px}.card b{font-size:26px;display:block;margin-top:6px}.panel{padding:17px}.panel h3{margin:0 0 12px;font-size:16px}
-.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.deviceGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.device,.compareDevice,.alert{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.device{cursor:pointer}.device:hover,.device.selected,.compareDevice:hover{border-color:#93c5fd;background:#eff6ff}.compareDevice{cursor:pointer}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;background:#94a3b8}.on{background:var(--success)}.off{background:var(--danger)}
-button,select,input{border-radius:10px;padding:9px 12px;font:inherit}button{border:0;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:650;box-shadow:0 6px 16px rgba(37,99,235,.16)}button.secondary{background:#eef2f7;color:#334155;box-shadow:none;border:1px solid var(--line)}button.danger{background:#fee2e2;color:#b91c1c;box-shadow:none}button:disabled{opacity:.45;cursor:not-allowed}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.statusLine{padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:#f8fafc;margin-bottom:10px}
-.deviceBar{position:sticky;top:0;z-index:500;display:flex;align-items:center;gap:12px;padding:10px 14px;margin:-20px -20px 16px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);box-shadow:0 5px 18px rgba(15,23,42,.08)}.deviceBar label{font-size:13px;font-weight:700}.deviceBar select{min-width:220px;max-width:min(420px,65vw);background:#fff;border:1px solid var(--line)}
-#map{height:390px;border-radius:13px;border:1px solid var(--line)}.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:10px 0}.mini{padding:11px;box-shadow:none}.mini b{display:block;margin-top:4px;font-size:14px}
-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}th{background:#f8fafc;color:#475569}tr:last-child td{border-bottom:0}
-.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}.shot{background:#fff;border:1px solid var(--line);border-radius:13px;padding:7px}.shot.selected{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.12)}.shot img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:9px;background:#0f172a;cursor:zoom-in}.shotActions{display:flex;gap:6px;margin-top:7px}.shotActions button,.shotActions a{flex:1;text-align:center;text-decoration:none;font-size:12px;padding:7px 6px;border-radius:8px}.shotActions a{background:#eef2ff;color:#3730a3}.progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#7c3aed)}.good{color:#15803d}.warn{color:#b45309}.bad{color:#b91c1c}
-.screenWrap{min-height:360px;padding:14px;border-radius:16px;background:#07111f;display:grid;place-items:center}.screen{max-width:100%;max-height:65vh;border-radius:10px;cursor:zoom-in}
-.storageBar{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}.storageBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#8b5cf6)}
-.settingRow{display:grid;grid-template-columns:1fr 220px;gap:15px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.settingRow:last-child{border-bottom:0}
-.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(2,6,23,.9);z-index:999}.modal.open{display:flex}.modal img{max-width:92vw;max-height:90vh;border-radius:14px}.modal button{position:absolute;top:20px;right:20px}
-.toast{position:fixed;right:20px;bottom:20px;display:none;padding:11px 14px;background:#0f172a;color:#fff;border-radius:10px;z-index:1000}.toast.show{display:block}
-@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.twoCol{grid-template-columns:1fr}.miniGrid{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){header{padding:0 14px}.shell{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);overflow:auto}.nav{flex-direction:row}.nav button{width:auto;white-space:nowrap}main{padding:14px}.deviceBar{margin:-14px -14px 14px;padding:9px 12px}.deviceBar select{min-width:150px;max-width:65vw}.cards{grid-template-columns:1fr 1fr}.settingRow{grid-template-columns:1fr}.shots{grid-template-columns:1fr 1fr}}
+:root{color-scheme:light;--bg:#f3f6fb;--surface:#fff;--text:#142033;--muted:#718096;--line:#e5eaf1;--brand:#087f8c;--brand2:#0a6475;--success:#14805e;--danger:#c2414b;--shadow:0 8px 24px rgba(28,45,70,.055);--radius:18px}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,"Segoe UI",ui-sans-serif,system-ui,-apple-system,sans-serif;background:radial-gradient(ellipse at 10% 0%,#e4f4f3 0,transparent 34%),var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+header{height:76px;padding:0 clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;color:#f7ffff;background:linear-gradient(112deg,#12323e,#135766 65%,#147681);box-shadow:0 8px 28px rgba(14,55,65,.16);position:relative;z-index:20}
+.brand{display:flex;align-items:center;gap:12px}.mark{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-weight:850;font-size:19px;color:#0e4c55;background:linear-gradient(145deg,#b8f0df,#63d2c7);box-shadow:inset 0 1px 0 #eafff8}.brand b{display:block;font-size:16px;letter-spacing:.1px}.brand small{color:#c8e5e5;font-size:12px}
+.shell{display:grid;grid-template-columns:238px minmax(0,1fr);min-height:calc(100vh - 76px)}aside{padding:22px 14px;background:rgba(255,255,255,.82);border-right:1px solid var(--line);position:sticky;top:0;height:calc(100vh - 76px);overflow-y:auto}
+.nav{display:flex;flex-direction:column;gap:5px}.nav button{width:100%;text-align:left;background:transparent;color:#59697d;box-shadow:none;padding:11px 14px;border:1px solid transparent;border-radius:12px;font-weight:600;transition:background .16s,color .16s,transform .16s}.nav button:hover{background:#eff7f7;color:var(--brand);transform:translateX(2px)}.nav button.active{background:#e6f5f3;color:#096d76;border-color:#cbe9e5;box-shadow:inset 3px 0 #0c8990}
+main{padding:26px clamp(16px,3vw,40px) 44px;min-width:0;max-width:1760px;width:100%;margin:0 auto}.view{display:none}.view.active{display:block;animation:enter .2s ease-out}@keyframes enter{from{opacity:.5;transform:translateY(4px)}to{opacity:1;transform:none}}.pageHead{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:4px 0 18px}.pageHead h2{margin:0;font-size:25px;line-height:1.2;letter-spacing:-.5px}.pageHead .muted{margin-top:5px}.muted{color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(6,minmax(125px,1fr));gap:14px}.card,.panel,.mini{background:var(--surface);border:1px solid rgba(222,230,238,.9);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card{padding:18px;min-width:0;transition:transform .18s,box-shadow .18s}.card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(28,45,70,.09)}.card>span{font-size:12px;font-weight:650;letter-spacing:.2px}.card b{font-size:27px;line-height:1.2;display:block;margin-top:8px;letter-spacing:-.7px}.panel{padding:20px;margin-bottom:14px}.panel h3{margin:0 0 13px;font-size:16px;letter-spacing:-.15px}
+.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.deviceGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.device,.compareDevice,.alert{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}.device{cursor:pointer;transition:border-color .16s,background .16s,transform .16s}.device:hover,.device.selected,.compareDevice:hover{border-color:#83c7c4;background:#f0fbf9;transform:translateY(-1px)}.compareDevice{cursor:pointer}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:8px;background:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.13)}.on{background:var(--success);box-shadow:0 0 0 3px rgba(20,128,94,.12)}.off{background:var(--danger);box-shadow:0 0 0 3px rgba(194,65,75,.12)}
+button,select,input,textarea{border-radius:11px;padding:10px 12px;font:inherit}button{border:1px solid transparent;cursor:pointer;background:linear-gradient(135deg,#0b8790,#126b7a);color:#fff;font-weight:680;box-shadow:0 4px 11px rgba(8,127,140,.16);transition:filter .16s,transform .16s,box-shadow .16s}button:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 7px 15px rgba(8,127,140,.2)}button.secondary{background:#fff;color:#435369;box-shadow:none;border:1px solid #dce4ec}button.secondary:hover:not(:disabled){background:#f4f8fa;border-color:#b9cbd5;box-shadow:none}button.danger{background:#fff2f1;color:#ae3844;box-shadow:none;border:1px solid #f2d3d3}button.danger:hover:not(:disabled){background:#ffe6e4}button:disabled{opacity:.48;cursor:not-allowed;box-shadow:none}select,input,textarea{color:var(--text);background:#fff;border:1px solid #dce4ec;outline:none;transition:border-color .15s,box-shadow .15s}select:focus,input:focus,textarea:focus{border-color:#58aeb0;box-shadow:0 0 0 3px rgba(8,127,140,.12)}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:12px 0}.statusLine{padding:12px 15px;border:1px solid #e5ebef;border-radius:13px;background:#f7fafb;margin-bottom:12px}
+.deviceBar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:12px;padding:12px 16px;margin:-26px calc(clamp(16px,3vw,40px)*-1) 22px;background:rgba(255,255,255,.9);border-bottom:1px solid rgba(222,230,238,.9);box-shadow:0 5px 16px rgba(28,45,70,.035);backdrop-filter:blur(14px)}.deviceBar label{font-size:12px;font-weight:750;letter-spacing:.25px;color:#4a5c6d;text-transform:uppercase}.deviceBar select{min-width:220px;max-width:min(420px,65vw);background:#fff}.deviceBar .muted{font-size:12px}
+#map{height:410px;border-radius:15px;border:1px solid var(--line);overflow:hidden}.miniGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:13px 0}.mini{padding:13px 15px;box-shadow:none;background:#fbfdfd}.mini b{display:block;margin-top:5px;font-size:15px;line-height:1.35}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}th,td{padding:11px 12px;border-bottom:1px solid #edf0f4;text-align:left;white-space:nowrap}th{background:#f5f8fa;color:#526276;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.35px}tbody tr:hover{background:#f8fbfc}tr:last-child td{border-bottom:0}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:13px}.shot{background:#fff;border:1px solid var(--line);border-radius:15px;padding:8px;box-shadow:0 4px 13px rgba(28,45,70,.04);transition:transform .16s,box-shadow .16s,border-color .16s}.shot:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(28,45,70,.1)}.shot.selected{border-color:#278d95;box-shadow:0 0 0 3px rgba(8,127,140,.12)}.shot>label{display:flex;align-items:center;gap:7px;padding:3px 3px 8px}.shot img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#152533;cursor:zoom-in}.shotActions{display:flex;gap:7px;margin-top:8px}.shotActions button,.shotActions a{flex:1;text-align:center;text-decoration:none;font-size:12px;padding:8px 6px;border-radius:9px}.shotActions a{background:#eaf5f4;color:#116b72;font-weight:650}.shotActions a:hover{background:#dcefed}.shotPagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;margin:14px 0;background:#f7fafb;border:1px solid var(--line);border-radius:14px}.shotPagination .pageInfo{font-size:13px;font-weight:650;color:#536477}.shotPagination .pageActions{display:flex;gap:8px}.progress{height:9px;background:#e8eef2;border-radius:999px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#0b8790,#63cbb6);border-radius:inherit;transition:width .25s}.good{color:#147a58}.warn{color:#a45d0a}.bad{color:#b53d48}
+.screenWrap{min-height:380px;padding:18px;border-radius:17px;background:linear-gradient(145deg,#13232d,#09131c);display:grid;place-items:center}.screen{max-width:100%;max-height:65vh;border-radius:11px;cursor:zoom-in;box-shadow:0 12px 34px #0007}
+.storageBar{height:8px;background:#e8eef2;border-radius:999px;overflow:hidden;margin-top:10px}.storageBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#0b8790,#63cbb6);border-radius:inherit}
+.settingRow{display:grid;grid-template-columns:1fr 240px;gap:18px;align-items:center;padding:16px 0;border-bottom:1px solid #edf0f4}.settingRow:last-child{border-bottom:0}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(6,19,27,.92);z-index:999;backdrop-filter:blur(5px)}.modal.open{display:flex}.modal img{max-width:92vw;max-height:90vh;border-radius:15px;box-shadow:0 20px 60px #0008}.modal button{position:absolute;top:20px;right:20px}
+.toast{position:fixed;right:22px;bottom:22px;display:none;padding:12px 16px;background:#142c37;color:#fff;border-radius:12px;z-index:1000;box-shadow:0 10px 30px #102a3540}.toast.show{display:block}
+@media(max-width:1250px){.cards{grid-template-columns:repeat(3,minmax(130px,1fr))}.twoCol{grid-template-columns:1fr}.miniGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){header{height:66px;padding:0 15px}.shell{grid-template-columns:1fr;min-height:calc(100vh - 66px)}aside{padding:9px 10px;border-right:0;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:16;height:auto;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}.nav{flex-direction:row;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}.nav button{width:auto;white-space:nowrap;padding:9px 12px;font-size:12px}.nav button:hover{transform:none}.nav button.active{box-shadow:inset 0 -2px #0c8990}main{padding:18px 13px 30px}.deviceBar{top:51px;margin:-18px -13px 18px;padding:10px 13px;gap:8px}.deviceBar select{min-width:130px;max-width:55vw}.deviceBar label{font-size:10px}.deviceBar .muted{font-size:11px}.pageHead{align-items:flex-start}.pageHead h2{font-size:22px}.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{padding:14px;border-radius:15px}.card b{font-size:23px}.panel{padding:15px;border-radius:16px}.settingRow{grid-template-columns:1fr;gap:9px}.shots{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.shotPagination{align-items:stretch;flex-direction:column}.shotPagination .pageActions{display:grid;grid-template-columns:1fr 1fr}.shotPagination button{width:100%}#map{height:340px}.screenWrap{min-height:300px;padding:10px}.toolbar button{flex:0 0 auto}}
+@media(max-width:390px){.brand small{display:none}.deviceBar{flex-wrap:wrap}.deviceBar select{flex:1;min-width:0;max-width:none}.shots{gap:7px}.shot{padding:6px}.shotActions{gap:5px}.shotActions button,.shotActions a{font-size:11px}}
 </style>
 </head>
 <body>
@@ -123,11 +124,14 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border
       <button id="shotClearDate" class="secondary">All Dates</button>
       <label class="muted" for="shotPageSize">Per page</label><select id="shotPageSize"><option value="20" selected>20</option><option value="40">40</option><option value="60">60</option><option value="100">100</option></select>
       <button id="shotSelectAll" class="secondary">Select All</button>
-      <button id="shotLoadOlder" class="secondary" disabled>Load older screenshots</button>
       <button id="shotDownloadSelected" class="secondary">Download Selected</button>
       <button id="shotDeleteSelected" class="danger">Delete Selected</button>
       <select id="deviceRetention"><option value="">Use Global Retention</option><option value="1">1 day</option><option value="3">3 days</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="0">Never</option></select>
       <button id="saveDeviceRetention" class="secondary">Save Device Retention</button>
+    </div>
+    <div class="shotPagination" aria-label="Screenshot pages">
+      <div id="shotPageSummary" class="pageInfo" aria-live="polite">Page 1 · No screenshots</div>
+      <div class="pageActions"><button id="shotPreviousPage" class="secondary" disabled>← Previous</button><button id="shotNextPage" disabled>Next 20 →</button></div>
     </div>
     <div id="shots" class="shots"></div>
   </div>
@@ -221,9 +225,35 @@ let routeLayer=L.layerGroup().addTo(map);
 let comparisonLayer=L.layerGroup().addTo(map);
 const fmt=t=>t?new Date(t).toLocaleString():'—';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const diagnosticReason=e=>{
+  const labels={
+    app_stopped_by_user:'Android reports a user-requested stop',
+    app_stopped_low_memory:'Android reports low memory',
+    app_crashed:'Android reports an app crash',
+    app_native_crash:'Android reports a native crash',
+    app_anr:'Android reports the app stopped responding',
+    app_excessive_resource_usage:'Android reports excessive resource use',
+    app_permission_change_exit:'Android reports a permission change',
+    permissions_removed:'App permissions or notifications were turned off',
+    battery_optimization_setting_changed:'Battery optimization setting changed',
+    app_package_state_change_exit:'Android reports a package state change',
+    app_package_updated_exit:'Android reports an app update',
+    app_dependency_died:'Android reports a dependency stopped',
+    app_process_exit_other:'Android reports a process exit with no specific reason'
+  };
+  return labels[e?.reason]||String(e?.reason||'unknown').replace(/_/g,' ');
+};
 const diagnosticSummary=e=>{
   if(!e)return 'No report yet';
-  const c=e.context||{},parts=[String(e.reason||'unknown').replace(/_/g,' '),fmt(e.at)];
+  const c=e.context||{},parts=[diagnosticReason(e),fmt(c.exit_timestamp||e.at)];
+  if(e.reason==='app_stopped_by_user')parts.push('Android does not identify which person or exact stop action');
+  if(c.diagnostic_certainty==='os_reported_unspecified'&&c.exit_description)parts.push(String(c.exit_description).slice(0,140));
+  const removed=c.permissions_removed||{};
+  const permissionNames={fine_location:'location',coarse_location:'approximate location',background_location:'background location',notifications:'notifications'};
+  const changed=Object.keys(removed).filter(k=>removed[k]).map(k=>permissionNames[k]||k);
+  if(changed.length)parts.push('Turned off: '+changed.join(', '));
+  if(c.notification_permission===false)parts.push('app notifications disabled');
+  if(c.battery_optimization_exempt===false)parts.push('battery optimization exemption off at next launch');
   if(c.network)parts.push(c.network);
   if(c.battery_percent!=null&&c.battery_percent>=0)parts.push('Battery '+c.battery_percent+'%');
   if(c.battery_saver)parts.push('Battery saver on');
@@ -384,7 +414,7 @@ async function loadDevices(){
     '<div class="device '+(selected&&selected.device_id===d.device_id?'selected':'')+'" data-device-id="'+esc(d.device_id)+'">'+
     '<div><span class="dot '+(d.online?'on':'off')+'"></span><b>'+esc(d.model||d.device_name||d.device_id)+'</b></div>'+
     '<div class="muted">'+esc(d.device_id)+' · '+(d.online?'Online':'Offline')+' · '+fmt(d.last_seen)+'</div>'+
-    '<div class="muted">Last offline report: '+esc(diagnosticSummary(d.last_diagnostic_event))+'</div>'+
+    '<div class="muted">Last monitoring event: '+esc(diagnosticSummary(d.last_diagnostic_event))+'</div>'+
     '<div class="muted">Battery '+esc(d.battery??'—')+'% · '+(d.charging?'Charging':'Not charging')+' · '+esc(d.network||'—')+'</div>'+
     '<button class="danger removeDevice" data-device-id="'+esc(d.device_id)+'" style="margin-top:8px">Remove device</button></div>'
   ).join('');
@@ -423,6 +453,7 @@ function renderAlerts(){
     if(d.gps_enabled===false)alerts.push(name+' GPS disabled');
     if(d.screen_monitoring===false)alerts.push(name+' screen monitoring paused');
     if(d.sos_active===true)alerts.push(name+' SOS active');
+    if(String(d.last_diagnostic_event?.reason||'').startsWith('app_'))alerts.push(name+' · '+diagnosticSummary(d.last_diagnostic_event));
   }
   document.getElementById('alerts').innerHTML=alerts.length?alerts.slice(0,8).map(x=>'<div class="alert">'+esc(x)+'</div>').join(''):'<div class="muted">No alerts</div>';
 }
@@ -487,7 +518,7 @@ function renderSelected(){
   if(!selected)return;
   const l=selected.last_location||{},name=selected.model||selected.device_name||selected.device_id;
   const status=(selected.online?'Online':'Offline')+' · Last sync '+fmt(selected.last_seen)+' · Battery '+(selected.battery??'—')+'% · '+(selected.network||'—')+' · GPS '+(selected.gps_enabled===false?'Off':'On')+' · Screen '+(selected.screen_monitoring?'On':'Paused');
-  const diagnosis='Last offline report: '+diagnosticSummary(selected.last_diagnostic_event);
+  const diagnosis='Last monitoring event: '+diagnosticSummary(selected.last_diagnostic_event);
   document.getElementById('deviceTitle').textContent=name;document.getElementById('status').textContent=status;document.getElementById('liveStatus').textContent=status;
   document.getElementById('shotsDevice').textContent=name+' · Last screenshot '+fmt(selected.last_screenshot);
   document.getElementById('overviewDevice').innerHTML='<b>'+esc(name)+'</b><div class="muted" style="margin-top:7px">'+esc(status)+'</div><div class="muted" style="margin-top:7px">'+esc(diagnosis)+'</div>';
@@ -519,22 +550,24 @@ async function renderHistory(){
   const stays=detectStays(rows);document.getElementById('stayTime').textContent=Math.round(stays.reduce((s,x)=>s+x.mins,0))+' min';
   document.getElementById('stays').innerHTML=stays.length?stays.slice(-10).reverse().map(s=>'<tr><td>'+fmt(s.start.recorded_at)+'</td><td>'+fmt(s.end.recorded_at)+'</td><td>'+Math.round(s.mins)+' min</td></tr>').join(''):'<tr><td colspan="3" class="muted">No 5+ minute stays</td></tr>';
 }
-async function loadScreenshots({append=false}={}){
+async function loadScreenshots({offset=0}={}){
   if(!selected||screenshotLoading)return;
   screenshotLoading=true;
   const deviceId=selected.device_id;
   const date=document.getElementById('shotDate').value;
-  const button=document.getElementById('shotLoadOlder');
-  button.disabled=true;
-  if(!append){selectedShots.clear();screenshotOffset=0;document.getElementById('shots').innerHTML='';}
   const pageSize=Math.max(1,Math.min(100,Number(document.getElementById('shotPageSize').value)||20));
-  const q='/arivo-monitor/admin/screenshots?device_id='+encodeURIComponent(deviceId)+'&limit='+pageSize+'&offset='+screenshotOffset+(date?'&date='+encodeURIComponent(date):'');
+  const pageOffset=Math.max(0,Math.floor(Number(offset)||0));
+  const previous=document.getElementById('shotPreviousPage'),next=document.getElementById('shotNextPage'),summary=document.getElementById('shotPageSummary');
+  previous.disabled=true;next.disabled=true;next.textContent='Loading…';summary.textContent='Loading screenshots…';
+  const q='/arivo-monitor/admin/screenshots?device_id='+encodeURIComponent(deviceId)+'&limit='+pageSize+'&offset='+pageOffset+(date?'&date='+encodeURIComponent(date):'');
   try{
     const [rows,stats]=await Promise.all([
       api(q),
-      append?Promise.resolve(null):api('/arivo-monitor/admin/screenshot-stats?device_id='+encodeURIComponent(deviceId))
+      api('/arivo-monitor/admin/screenshot-stats?device_id='+encodeURIComponent(deviceId))
     ]);
     if(!selected||selected.device_id!==deviceId)return;
+    screenshotOffset=pageOffset;
+    selectedShots.clear();
     if(stats){
       document.getElementById('shotCount').textContent=stats.count||0;
       document.getElementById('shotBytes').textContent=bytesText(stats.bytes||0);
@@ -545,16 +578,20 @@ async function loadScreenshots({append=false}={}){
     const html=rows.map(x=>
       '<div class="shot" data-file="'+esc(x.file)+'"><label class="muted"><input class="shotCheck" type="checkbox" data-file="'+esc(x.file)+'"> Select</label><img loading="lazy" decoding="async" fetchpriority="low" width="180" height="320" src="'+mediaUrl(x.file)+'"><div class="muted">'+fmt(x.captured_at)+' · '+bytesText(x.bytes||0)+'</div><div class="shotActions"><a href="'+mediaUrl(x.file,true)+'">Download</a><button class="danger deleteShot" data-file="'+esc(x.file)+'">Delete</button></div></div>'
     ).join('');
-    if(append)document.getElementById('shots').insertAdjacentHTML('beforeend',html);
-    else document.getElementById('shots').innerHTML=html||'<div class="muted">No screenshots for this filter.</div>';
-    screenshotOffset+=rows.length;
-    button.hidden=rows.length<pageSize;
-    button.textContent='Load older screenshots';
+    document.getElementById('shots').innerHTML=html||'<div class="muted">No screenshots for this filter.</div>';
+    const total=date?Number(stats.by_day?.[date]||0):Number(stats.count||0);
+    const from=rows.length?pageOffset+1:0,to=pageOffset+rows.length,pageNumber=Math.floor(pageOffset/pageSize)+1;
+    summary.textContent=total?`Page ${pageNumber} · ${from}–${to} of ${total}`:'No screenshots for this filter';
+    previous.disabled=pageOffset===0;
+    next.disabled=pageOffset+rows.length>=total||rows.length===0;
+    next.textContent=`Next ${pageSize} →`;
   }catch{
     toast('Could not load screenshots. Try again.');
+    summary.textContent='Could not load screenshots';
+    next.textContent=`Next ${pageSize} →`;
   }finally{
     screenshotLoading=false;
-    button.disabled=button.hidden;
+    if(screenshotOffset>0)previous.disabled=false;
   }
   document.querySelectorAll('#shots img').forEach(img=>img.onclick=()=>openImage(img.src));
   document.querySelectorAll('.deleteShot').forEach(btn=>btn.onclick=()=>deleteScreenshot(btn.dataset.file));
@@ -564,7 +601,8 @@ async function loadScreenshots({append=false}={}){
   });
   await loadSettings();
 }
-document.getElementById('shotLoadOlder').onclick=()=>loadScreenshots({append:true});
+document.getElementById('shotPreviousPage').onclick=()=>loadScreenshots({offset:Math.max(0,screenshotOffset-Number(document.getElementById('shotPageSize').value||20))});
+document.getElementById('shotNextPage').onclick=()=>loadScreenshots({offset:screenshotOffset+Number(document.getElementById('shotPageSize').value||20)});
 async function deleteScreenshot(file){
   if(!selected||!confirm('Delete this screenshot permanently?'))return;
   await api('/arivo-monitor/admin/screenshot?device_id='+encodeURIComponent(selected.device_id)+'&file='+encodeURIComponent(file),{method:'DELETE'});

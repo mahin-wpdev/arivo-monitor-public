@@ -24,6 +24,8 @@ class SetupWizardActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var instructionText: TextView
     private lateinit var continueButton: Button
+    private lateinit var notificationButton: Button
+    private lateinit var notificationInfo: TextView
     private val prefs by lazy { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     private var pendingVendorReview: String? = null
     private var waitingForBackgroundSettings = false
@@ -91,6 +93,31 @@ class SetupWizardActivity : Activity() {
             setOnClickListener { runNextStep() }
         }
 
+        notificationButton = Button(this).apply {
+            text = "Allow notifications"
+            textSize = 15f
+            isAllCaps = false
+            visibility = View.GONE
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    !hasNotificationPermission()
+                ) {
+                    requestPermissions(
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        REQUEST_NOTIFICATIONS
+                    )
+                }
+            }
+        }
+
+        notificationInfo = TextView(this).apply {
+            text = "Notifications are optional. If disabled, Android can still show Arivo in its active apps controls, where you can stop it."
+            textSize = 13f
+            setTextColor(Color.rgb(100, 108, 120))
+            setPadding(0, dp(8), 0, 0)
+            visibility = View.GONE
+        }
+
         val footer = TextView(this).apply {
             text = "Android protects some background settings, so Arivo cannot silently change them. This setup opens the correct page and remembers the completed steps."
             textSize = 13f
@@ -109,6 +136,8 @@ class SetupWizardActivity : Activity() {
                 dp(52)
             )
         )
+        content.addView(notificationButton)
+        content.addView(notificationInfo)
         content.addView(footer)
 
         return ScrollView(this).apply {
@@ -129,7 +158,7 @@ class SetupWizardActivity : Activity() {
 
         lines += row(hasForegroundLocation(), "Location permission")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            lines += row(hasNotificationPermission(), "Notification permission")
+            lines += row(hasNotificationPermission(), "Notifications (optional)")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             lines += row(hasBackgroundLocation(), "Background location")
@@ -147,6 +176,9 @@ class SetupWizardActivity : Activity() {
         val next = nextStep()
         instructionText.text = next.second
         continueButton.text = next.first
+        val notificationPermissionAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        notificationButton.visibility = if (notificationPermissionAvailable && !hasNotificationPermission()) View.VISIBLE else View.GONE
+        notificationInfo.visibility = if (notificationPermissionAvailable && !hasNotificationPermission()) View.VISIBLE else View.GONE
 
         if (isSetupComplete(this)) {
             instructionText.text = "All required background settings are complete."
@@ -161,13 +193,6 @@ class SetupWizardActivity : Activity() {
         if (!hasForegroundLocation()) {
             return "Allow location" to
                 "Allow precise location so Arivo can report the device location."
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !hasNotificationPermission()
-        ) {
-            return "Allow notifications" to
-                "Allow notifications. Android requires this permission for reliable foreground monitoring."
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -208,16 +233,6 @@ class SetupWizardActivity : Activity() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ),
                 REQUEST_LOCATION
-            )
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !hasNotificationPermission()
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                REQUEST_NOTIFICATIONS
             )
             return
         }
@@ -430,11 +445,6 @@ class SetupWizardActivity : Activity() {
                     context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED
 
-            val notifications =
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED
-
             val backgroundLocation =
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
                     context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
@@ -456,8 +466,7 @@ class SetupWizardActivity : Activity() {
                 (prefs.getBoolean(KEY_VIVO_AUTOSTART, false) &&
                     prefs.getBoolean(KEY_VIVO_BACKGROUND_POWER, false))
 
-            return foregroundLocation && notifications && backgroundLocation &&
-                battery && vendorReady
+            return foregroundLocation && backgroundLocation && battery && vendorReady
         }
 
         fun shouldShow(context: Context): Boolean {

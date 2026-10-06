@@ -318,6 +318,21 @@ async function deviceApi(req, res, url) {
         reason: String(raw.reason || 'unknown').slice(0, 80),
         context: {
           network: String(context.network || '').slice(0, 40),
+          exit_timestamp: context.exit_timestamp != null && Number.isFinite(Number(context.exit_timestamp))
+            ? Math.max(0, Number(context.exit_timestamp)) : null,
+          exit_reason_code: context.exit_reason_code != null && Number.isFinite(Number(context.exit_reason_code))
+            ? Number(context.exit_reason_code) : null,
+          exit_reason_label: String(context.exit_reason_label || '').slice(0, 160),
+          exit_description: String(context.exit_description || '').slice(0, 300),
+          diagnostic_certainty: String(context.diagnostic_certainty || '').slice(0, 40),
+          notification_permission: typeof context.notification_permission === 'boolean'
+            ? context.notification_permission : null,
+          battery_optimization_exempt: typeof context.battery_optimization_exempt === 'boolean'
+            ? context.battery_optimization_exempt : null,
+          permissions_removed: context.permissions_removed && typeof context.permissions_removed === 'object'
+            ? Object.fromEntries(Object.entries(context.permissions_removed).filter(([key, value]) =>
+                ['fine_location', 'coarse_location', 'background_location', 'notifications'].includes(key) && value === true))
+            : {},
           battery_percent: context.battery_percent != null && Number.isFinite(Number(context.battery_percent))
             ? Math.max(-1, Math.min(100, Number(context.battery_percent))) : null,
           charging: context.charging === true,

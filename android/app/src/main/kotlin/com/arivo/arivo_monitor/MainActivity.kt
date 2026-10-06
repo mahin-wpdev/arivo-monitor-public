@@ -1,6 +1,8 @@
 package com.arivo.arivo_monitor
 
 import android.Manifest
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -45,7 +47,122 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         projectionRequested = savedInstanceState?.getBoolean("projection_requested", false) ?: false
+        recordPreviousUserStop()
+        recordPermissionAndBatteryChanges()
         handleActivationIntent(intent)
+    }
+
+    private fun recordPermissionAndBatteryChanges() {
+        val prefs = getSharedPreferences("arivo_diagnostics", Context.MODE_PRIVATE)
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val notificationsEnabled = areAppNotificationsEnabled()
+        val state = JSONObject()
+            .put("fine_location", checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            .put("coarse_location", checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            .put("background_location", Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+                checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            .put("notifications", notificationsEnabled)
+            .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName))
+        val previousRaw = prefs.getString("last_permission_battery_state", null)
+        if (!previousRaw.isNullOrBlank()) {
+            val previous = try { JSONObject(previousRaw) } catch (_: Exception) { JSONObject() }
+            val removed = JSONObject()
+            for (key in listOf("fine_location", "coarse_location", "background_location", "notifications")) {
+                val before = previous.optBoolean(key, state.optBoolean(key))
+                val current = state.optBoolean(key)
+                if (before && !current) removed.put(key, true)
+            }
+            if (removed.length() > 0) {
+                MonitorDiagnostics.record(this, "permissions_removed", JSONObject()
+                    .put("permissions_removed", removed)
+                    .put("notification_permission", notificationsEnabled)
+                    .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName)))
+            }
+            if (previous.optBoolean("battery_optimization_exempt", state.optBoolean("battery_optimization_exempt")) !=
+                state.optBoolean("battery_optimization_exempt")) {
+                MonitorDiagnostics.record(this, "battery_optimization_setting_changed", JSONObject()
+                    .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName)))
+            }
+        }
+        prefs.edit().putString("last_permission_battery_state", state.toString()).apply()
+    }
+
+    private fun recordPreviousUserStop() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val prefs = getSharedPreferences("arivo_diagnostics", Context.MODE_PRIVATE)
+        val lastRecorded = prefs.getLong("last_process_exit_timestamp", 0L)
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val exit = try {
+            manager.getHistoricalProcessExitReasons(packageName, 0, 10)
+                .firstOrNull { it.timestamp > lastRecorded }
+        } catch (_: Exception) {
+            null
+        } ?: return
+
+        val notificationsAllowed = areAppNotificationsEnabled()
+        val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val (reason, certainty, label) = when (exit.reason) {
+            ApplicationExitInfo.REASON_USER_REQUESTED -> Triple(
+                "app_stopped_by_user", "os_reported", "Android reported a user-requested stop"
+            )
+            ApplicationExitInfo.REASON_LOW_MEMORY -> Triple(
+                "app_stopped_low_memory", "os_reported", "Android reported low memory"
+            )
+            ApplicationExitInfo.REASON_CRASH -> Triple(
+                "app_crashed", "os_reported", "Android reported an app crash"
+            )
+            ApplicationExitInfo.REASON_CRASH_NATIVE -> Triple(
+                "app_native_crash", "os_reported", "Android reported a native crash"
+            )
+            ApplicationExitInfo.REASON_ANR -> Triple(
+                "app_anr", "os_reported", "Android reported that the app stopped responding"
+            )
+            ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> Triple(
+                "app_excessive_resource_usage", "os_reported", "Android reported excessive resource use"
+            )
+            ApplicationExitInfo.REASON_PERMISSION_CHANGE -> Triple(
+                "app_permission_change_exit", "os_reported", "Android reported a permission change"
+            )
+            ApplicationExitInfo.REASON_PACKAGE_STATE_CHANGE -> Triple(
+                "app_package_state_change_exit", "os_reported", "Android reported a package state change"
+            )
+            ApplicationExitInfo.REASON_PACKAGE_UPDATED -> Triple(
+                "app_package_updated_exit", "os_reported", "Android reported that the app was updated"
+            )
+            ApplicationExitInfo.REASON_DEPENDENCY_DIED -> Triple(
+                "app_dependency_died", "os_reported", "Android reported that a dependency stopped"
+            )
+            else -> Triple(
+                "app_process_exit_other", "os_reported_unspecified", "Android reported process exit: ${exit.reason}"
+            )
+        }
+        MonitorDiagnostics.record(
+            this,
+            reason,
+            JSONObject()
+                .put("exit_timestamp", exit.timestamp)
+                .put("exit_reason_code", exit.reason)
+                .put("exit_reason_label", label)
+                .put("exit_description", exit.description ?: "")
+                .put("diagnostic_certainty", certainty)
+                .put("notification_permission", notificationsAllowed)
+                .put("battery_optimization_exempt", power.isIgnoringBatteryOptimizations(packageName))
+                .put("app_version", BuildConfig.VERSION_NAME)
+                .put("app_build", BuildConfig.VERSION_CODE)
+        )
+        if (exit.reason == ApplicationExitInfo.REASON_USER_REQUESTED) {
+            MonitorDiagnostics.serviceStopped(this)
+        }
+        prefs.edit().putLong("last_process_exit_timestamp", exit.timestamp).apply()
+    }
+
+    private fun areAppNotificationsEnabled(): Boolean {
+        val appNotificationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.N ||
+            (getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
+                .areNotificationsEnabled()
+        val runtimePermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        return appNotificationsEnabled && runtimePermissionGranted
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -175,11 +292,6 @@ class MainActivity : FlutterActivity() {
             != PackageManager.PERMISSION_GRANTED) {
             needed += Manifest.permission.ACCESS_FINE_LOCATION
             needed += Manifest.permission.ACCESS_COARSE_LOCATION
-        }
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED) {
-            needed += Manifest.permission.POST_NOTIFICATIONS
         }
         if (needed.isNotEmpty()) {
             permissionFlowPending = true

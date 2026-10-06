@@ -51,6 +51,8 @@
 - GitHub-managed update pipeline enabled and verified.
 
 ## Unreleased
+- Treat Android notification permission as optional for setup so monitoring can start when notifications are disabled; retain Android's visible foreground-service entry and stop control, and report a user-requested app stop on the next launch with a clear reason in the dashboard.
+- Added explicit Previous/Next screenshot pages with matching filtered totals, page range and a configurable page size; refreshed dashboard navigation, cards, controls, tables and mobile layouts.
 - Added a one-time Android setup wizard that verifies location, notification, background-location and battery-optimization permissions before normal monitoring starts.
 - Added Vivo/iQOO setup routing for Auto-start and background-power settings, with safe fallbacks when a Funtouch OS-specific settings screen is unavailable.
 - The wizard re-checks verifiable Android permissions after returning from Settings, remembers completed Vivo review steps, starts the monitor service after setup, and leaves MediaProjection consent in the existing user-controlled flow.
