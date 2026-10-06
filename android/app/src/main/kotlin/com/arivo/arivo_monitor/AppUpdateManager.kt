@@ -45,6 +45,31 @@ object AppUpdateManager {
         check(activity.applicationContext, activity)
     }
 
+    fun status(context: Context): Map<String, Any> {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val pendingBuild = prefs.getInt("version_code", 0)
+        if (pendingBuild in 1..BuildConfig.VERSION_CODE) markCurrent(prefs)
+        return mapOf(
+            "status" to (prefs.getString("status", "unknown") ?: "unknown"),
+            "progress" to prefs.getInt("progress", 0),
+            "installed_version" to BuildConfig.VERSION_NAME,
+            "installed_build" to BuildConfig.VERSION_CODE,
+            "latest_version" to (prefs.getString("latest_version", "") ?: ""),
+            "latest_build" to prefs.getInt("latest_build", 0),
+            "required" to prefs.getBoolean("required", false),
+            "error" to (prefs.getString("error", "") ?: ""),
+            "checking" to checking
+        )
+    }
+
+    fun checkNow(activity: Activity) {
+        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putLong("last_check", 0L).apply()
+        checkAndPrompt(activity)
+    }
+
+    fun installPending(activity: Activity) = promptIfReady(activity)
+
     @Synchronized private fun check(context: Context, activity: Activity?) {
         if (AppConfig.DEVICE_KEY.isBlank()) return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -52,6 +77,9 @@ object AppUpdateManager {
         val interval = if (activity == null) CHECK_INTERVAL_MS else FOREGROUND_CHECK_INTERVAL_MS
         if (checking || now - prefs.getLong("last_check", 0L) < interval) return
         prefs.edit().putLong("last_check", now).apply()
+        if (prefs.getInt("version_code", 0) <= BuildConfig.VERSION_CODE) {
+            prefs.edit().putString("status", "checking").putInt("progress", 0).remove("error").apply()
+        }
         checking = true
 
         executor.execute {
@@ -86,6 +114,7 @@ object AppUpdateManager {
                     .putString("latest_version", version)
                     .putInt("latest_build", code)
                     .putString("release_notes", notes)
+                    .putBoolean("required", required)
                     .apply()
                 val dir = File(context.cacheDir, "updates").apply { mkdirs() }
                 val apk = File(dir, "arivo-$code.apk")
@@ -110,9 +139,17 @@ object AppUpdateManager {
                         if (!activity.isFinishing) promptIfReady(activity)
                     }
                 }
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                val message = when (error) {
+                    is java.net.SocketTimeoutException -> "Connection timed out. Check internet and try again."
+                    is java.net.UnknownHostException -> "Update server is unavailable. Check internet and try again."
+                    is java.net.ConnectException -> "Could not connect to the update server."
+                    is java.io.FileNotFoundException -> "The update server rejected the request. Reconnect this phone from the dashboard."
+                    else -> "Update download failed. Check internet and try again."
+                }
                 prefs.edit()
                     .putString("status", "failed")
+                    .putString("error", message)
                     .putLong("last_check", 0L)
                     .apply()
                 if (activity != null) {
@@ -141,6 +178,7 @@ object AppUpdateManager {
             .remove("release_notes")
             .remove("latest_version")
             .remove("latest_build")
+            .remove("error")
             .apply()
     }
 
@@ -177,12 +215,13 @@ object AppUpdateManager {
         connection.disconnect()
         if (expectedSha.isNotBlank() && sha256(tmp) != expectedSha) {
             tmp.delete()
-            prefs.edit().putString("status", "failed").putInt("progress", 0).apply()
+            prefs.edit().putString("status", "failed").putInt("progress", 0)
+                .putString("error", "The downloaded file failed its security check.").apply()
             return
         }
         if (apk.exists()) apk.delete()
         tmp.renameTo(apk)
-        prefs.edit().putString("status", "downloaded").putInt("progress", 100).apply()
+        prefs.edit().putString("status", "downloaded").putInt("progress", 100).remove("error").apply()
     }
 
     private fun sha256(file: File): String {
@@ -244,6 +283,8 @@ object AppUpdateManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !activity.packageManager.canRequestPackageInstalls()
         ) {
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString("status", "waiting_permission").apply()
             val intent = Intent(
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                 Uri.parse("package:" + activity.packageName)
@@ -251,6 +292,9 @@ object AppUpdateManager {
             activity.startActivity(intent)
             return
         }
+
+        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString("status", "installing").apply()
 
         val uri = FileProvider.getUriForFile(
             activity,

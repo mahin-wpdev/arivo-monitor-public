@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.11 - 2026-10-07
+
+- Dashboard now reports Android process exit reasons, permission changes, and battery optimization setting changes. Monitoring can start when notifications are disabled.
+
 ## 1.1.10 - 2026-10-06
 
 - Keep a bounded offline diagnostic log on-device and report failure causes plus device state after connectivity returns; expose the latest report in the server dashboard. Notification permission denial does not prevent the monitor service from starting; Android's required foreground-service disclosure remains enabled.

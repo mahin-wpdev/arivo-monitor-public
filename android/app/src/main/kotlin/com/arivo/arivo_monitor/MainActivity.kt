@@ -225,19 +225,31 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
-                if (call.method == "startMonitoring") {
-                    if (showSetupWizardIfNeeded()) {
+                when (call.method) {
+                    "startMonitoring" -> {
+                        if (showSetupWizardIfNeeded()) {
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+                        if (AppConfig.DEVICE_KEY.isBlank()) {
+                            activate()
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+                        ensurePermissionsAndStart()
                         result.success(true)
-                        return@setMethodCallHandler
                     }
-                    if (AppConfig.DEVICE_KEY.isBlank()) {
-                        activate()
+                    "getUpdateStatus" -> result.success(AppUpdateManager.status(this))
+                    "checkForUpdates" -> {
+                        AppUpdateManager.checkNow(this)
                         result.success(true)
-                        return@setMethodCallHandler
                     }
-                    ensurePermissionsAndStart()
-                    result.success(true)
-                } else result.notImplemented()
+                    "installUpdate" -> {
+                        AppUpdateManager.installPending(this)
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
             }
     }
 
