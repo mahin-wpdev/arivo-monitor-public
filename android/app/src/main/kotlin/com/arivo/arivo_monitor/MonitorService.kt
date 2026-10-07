@@ -69,6 +69,16 @@ class MonitorService : Service(), LocationListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        MonitorDiagnostics.record(
+            this,
+            "task_removed_from_recents",
+            diagnosticContext().put("service_restart_attempted", false)
+        )
+        super.onTaskRemoved(rootIntent)
+    }
+
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)

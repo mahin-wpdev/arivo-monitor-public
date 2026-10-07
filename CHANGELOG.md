@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.13 - 2026-10-07
+
+- Improved per-device activity logs and clarified Android-reported process exits versus connection gaps. Added exit status and memory clues where Android provides them.
+
 ## 1.1.12 - 2026-10-07
 
 - The app now shows update checking and download status, progress, failure details, retry, and install actions.

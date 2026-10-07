@@ -59,6 +59,7 @@
             android:enabled="true"
             android:exported="false"
             android:directBootAware="true"
+            android:stopWithTask="false"
             android:foregroundServiceType="location" />
 
         <service
