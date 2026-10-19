@@ -59,7 +59,6 @@
             android:enabled="true"
             android:exported="false"
             android:directBootAware="true"
-            android:stopWithTask="false"
             android:foregroundServiceType="location" />
 
         <service
@@ -76,6 +75,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/update_paths" />
         </provider>
+
+        <service
+            android:name=".WatchdogJobService"
+            android:enabled="true"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <receiver
+            android:name=".WatchdogAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
         <receiver
             android:name=".BootReceiver"

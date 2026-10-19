@@ -23,6 +23,7 @@ class BootReceiver : BroadcastReceiver() {
                     storage.getSharedPreferences("arivo_monitor_state", Context.MODE_PRIVATE)
                         .edit().putBoolean("screen_monitoring", false).apply()
                 }
+                MonitorWatchdog.schedule(context)
                 try {
                     start(context)
                 } catch (_: Exception) {

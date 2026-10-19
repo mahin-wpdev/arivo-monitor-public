@@ -1,17 +1,5 @@
 # Changelog
 
-## 1.1.13 - 2026-10-07
-
-- Improved per-device activity logs and clarified Android-reported process exits versus connection gaps. Added exit status and memory clues where Android provides them.
-
-## 1.1.12 - 2026-10-07
-
-- The app now shows update checking and download status, progress, failure details, retry, and install actions.
-
-## 1.1.11 - 2026-10-07
-
-- Dashboard now reports Android process exit reasons, permission changes, and battery optimization setting changes. Monitoring can start when notifications are disabled.
-
 ## 1.1.10 - 2026-10-06
 
 - Keep a bounded offline diagnostic log on-device and report failure causes plus device state after connectivity returns; expose the latest report in the server dashboard. Notification permission denial does not prevent the monitor service from starting; Android's required foreground-service disclosure remains enabled.
@@ -63,7 +51,6 @@
 - GitHub-managed update pipeline enabled and verified.
 
 ## Unreleased
-- Treat Android notification permission as optional for setup so monitoring can start when notifications are disabled; retain Android's visible foreground-service entry and stop control, and report a user-requested app stop on the next launch with a clear reason in the dashboard.
 - Added explicit Previous/Next screenshot pages with matching filtered totals, page range and a configurable page size; refreshed dashboard navigation, cards, controls, tables and mobile layouts.
 - Added a one-time Android setup wizard that verifies location, notification, background-location and battery-optimization permissions before normal monitoring starts.
 - Added Vivo/iQOO setup routing for Auto-start and background-power settings, with safe fallbacks when a Funtouch OS-specific settings screen is unavailable.

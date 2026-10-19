@@ -37,6 +37,8 @@ class MonitorService : Service(), LocationListener {
     private val queueLock = Any()
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
+        MonitorWatchdog.schedule(applicationContext)
         deviceId = AppConfig.deviceId(applicationContext)
         createChannel()
         startForeground(
@@ -69,16 +71,6 @@ class MonitorService : Service(), LocationListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        MonitorDiagnostics.record(
-            this,
-            "task_removed_from_recents",
-            diagnosticContext().put("service_restart_attempted", false)
-        )
-        super.onTaskRemoved(rootIntent)
-    }
-
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
@@ -363,6 +355,7 @@ class MonitorService : Service(), LocationListener {
         }
 
     override fun onDestroy() {
+        isRunning = false
         MonitorDiagnostics.serviceStopped(this)
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
         scheduler.shutdownNow()
@@ -371,6 +364,9 @@ class MonitorService : Service(), LocationListener {
     }
 
     companion object {
+        @Volatile
+        var isRunning: Boolean = false
+            private set
         private const val CHANNEL_ID = "arivo_monitor_status_v2"
         private const val LOCATION_QUEUE_FILE = "arivo_location_queue.jsonl"
         private const val MAX_LOCATION_QUEUE = 300
