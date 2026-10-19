@@ -103,6 +103,9 @@ object MonitorWatchdog {
 class WatchdogJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         MonitorWatchdog.ensureServiceRunning(applicationContext)
+        // Screen capture needs fresh MediaProjection consent after a process kill;
+        // re-prompt (rate-limited) if the user had it enabled.
+        StartupRecordingConsent.requestReconnect(applicationContext)
         // JobScheduler keeps the periodic job registered on its own; return false
         // because the (re)start work completes synchronously here.
         return false
@@ -115,6 +118,7 @@ class WatchdogJobService : JobService() {
 class WatchdogAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         MonitorWatchdog.ensureServiceRunning(context.applicationContext)
+        StartupRecordingConsent.requestReconnect(context.applicationContext)
         // Inexact allow-while-idle alarms are one-shot, so chain the next one.
         MonitorWatchdog.schedule(context.applicationContext)
     }

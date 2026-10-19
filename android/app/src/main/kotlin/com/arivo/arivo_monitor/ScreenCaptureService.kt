@@ -111,7 +111,13 @@ class ScreenCaptureService : Service() {
             createCaptureSurface()
             isCapturing = true
             ScreenCaptureConsent.complete()
-            statePrefs().edit().putBoolean("screen_monitoring", true).apply()
+            // screen_monitoring reflects the live session; screen_capture_enabled is a
+            // durable opt-in so the watchdog/boot flow knows to re-prompt for the
+            // MediaProjection consent that Android drops on reboot or process death.
+            statePrefs().edit()
+                .putBoolean("screen_monitoring", true)
+                .putBoolean("screen_capture_enabled", true)
+                .apply()
             restorePeriodicUploads()
 
             scheduler.scheduleAtFixedRate(

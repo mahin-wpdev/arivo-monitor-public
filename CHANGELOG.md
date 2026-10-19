@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.16 - 2026-10-19
+
+- Restores recent diagnostics and update-status features together with the new background keep-alive watchdog. Keeps Arivo running on Vivo/Funtouch and other aggressive devices by automatically restarting monitoring after the system closes it, adds a Vivo recent-apps lock step in setup, monitoring works with notifications disabled, and the dashboard reports Android process exit reasons and update download status.
+
 ## 1.1.15 - 2026-10-19
 
 - Keep Arivo running in the background on Vivo/Funtouch and other aggressive devices. Adds an automatic keep-alive watchdog that restarts monitoring after the system closes it, and a Vivo recent-apps lock step in setup.
